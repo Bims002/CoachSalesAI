@@ -32,9 +32,10 @@ function App() {
   const [scenarios] = useState<Scenario[]>(scenariosData);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [conversation, setConversation] = useState<Message[]>([]);
-  const [isAiResponding, setIsAiResponding] = useState(false); // Pour la génération de texte Gemini
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false);   // Pour la lecture audio TTS
+  const [isAiResponding, setIsAiResponding] = useState(false);
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null); // Nouvel état
 
   const handleSpeechResult = useCallback((finalTranscript: string) => {
     const trimmedTranscript = finalTranscript.trim();
@@ -44,7 +45,7 @@ function App() {
         { id: Date.now().toString() + '_user', text: trimmedTranscript, sender: 'user' }
       ]);
     }
-  }, []);
+  }, []); // setConversation est stable
 
   const {
     interimTranscript,
@@ -58,7 +59,7 @@ function App() {
   const getAiResponse = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
     if (!selectedScenario) return;
 
-    setIsAiResponding(true); // L'IA (Gemini) commence à réfléchir
+    setIsAiResponding(true);
     setApiError(null);
 
     try {
@@ -72,40 +73,38 @@ function App() {
         }),
       });
 
-      setIsAiResponding(false); // L'IA (Gemini) a fini de générer le texte
+      setIsAiResponding(false); 
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
-      const data = await response.json(); // data = { aiResponse: string, audioContent: string | null }
+      const data = await response.json();
       if (data.aiResponse) {
         const aiMessage: Message = { id: Date.now().toString() + '_ai', text: data.aiResponse, sender: 'ai' };
         setConversation(prev => [...prev, aiMessage]);
 
         if (data.audioContent) {
-          if (isListening) stopListening(); // S'assurer que l'écoute utilisateur est arrêtée
+          if (isListening) stopListening();
           
           setIsAiSpeaking(true);
           const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
           audio.play();
           audio.onended = () => {
             setIsAiSpeaking(false);
-            if (currentStep === 'simulation' && !isListening) { // Ne redémarrer que si on est en simulation et pas déjà en écoute
+            if (currentStep === 'simulation' && !isListening) {
               startListening();
             }
           };
           audio.onerror = () => {
             console.error("Erreur de lecture audio");
             setIsAiSpeaking(false);
-            // Peut-être redémarrer l'écoute ici aussi si TTS échoue mais Gemini a répondu
             if (currentStep === 'simulation' && !isListening) {
               startListening();
             }
           }
         } else {
-          // Pas d'audio (TTS a échoué ou n'a pas été généré), redémarrer l'écoute si besoin
           if (currentStep === 'simulation' && !isListening) {
             startListening();
           }
@@ -117,42 +116,54 @@ function App() {
       if (error instanceof Error) { errorMessage = error.message; }
       else if (typeof error === 'string') { errorMessage = error; }
       setApiError(errorMessage);
-      setIsAiResponding(false); // S'assurer que c'est false en cas d'erreur aussi
-      setIsAiSpeaking(false); // Et que l'IA ne parle pas
+      setIsAiResponding(false);
+      setIsAiSpeaking(false);
     }
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore - Pour contourner une erreur persistante et obscure de Vercel/TypeScript sur la ligne des dépendances
-  }, [selectedScenario, currentStep, isListening, startListening, stopListening, setConversation, setIsAiResponding, setApiError, setIsAiSpeaking]); // Ajout de stopListening et setIsAiSpeaking
+  // @ts-ignore 
+  }, [selectedScenario, currentStep, isListening, startListening, stopListening, setConversation, setIsAiResponding, setApiError, setIsAiSpeaking]);
 
   useEffect(() => {
     if (conversation.length > 0) {
       const lastMessage = conversation[conversation.length - 1];
-      if (lastMessage.sender === 'user' && !isAiResponding && !isAiSpeaking) { // Ne pas appeler si l'IA réfléchit ou parle
+      if (
+        lastMessage.sender === 'user' &&
+        lastMessage.id !== lastProcessedUserMessageId && // Vérifier si ce message a déjà été traité
+        !isAiResponding &&
+        !isAiSpeaking
+      ) {
+        setLastProcessedUserMessageId(lastMessage.id); // Marquer comme traité
         getAiResponse(lastMessage.text, conversation);
       }
     }
-  }, [conversation, isAiResponding, isAiSpeaking, getAiResponse]);
+  }, [conversation, isAiResponding, isAiSpeaking, getAiResponse, lastProcessedUserMessageId, setLastProcessedUserMessageId]);
 
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
     setConversation([]);
     if (isListening) stopListening();
     setCurrentStep('simulation');
+    setLastProcessedUserMessageId(null); // Réinitialiser pour un nouveau scénario
   };
 
   const toggleListening = () => {
-    if (isAiSpeaking) return; // Ne rien faire si l'IA parle
+    if (isAiSpeaking) return; 
 
     if (isListening) {
       stopListening();
     } else {
+      // Quand on commence une nouvelle écoute manuellement, réinitialiser l'ID du dernier message traité
+      // pour permettre à la nouvelle transcription de déclencher une réponse IA.
+      // Cependant, handleSpeechResult va créer un nouveau message avec un nouvel ID.
+      // La réinitialisation de conversation dans toggleListening (si on commence un nouveau tour)
+      // a été enlevée car la conversation est censée être continue.
+      // setConversation([]); // Ne pas faire ça ici, la conversation est continue.
       startListening();
     }
   };
 
   const handleEndSimulation = () => {
     if (isListening) stopListening();
-    if (isAiSpeaking) { /* Peut-être arrêter l'audio de l'IA aussi ? Pour l'instant non. */ }
     setCurrentStep('results');
   };
   
