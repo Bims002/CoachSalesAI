@@ -12,8 +12,25 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
 
 // Initialisation du client Text-to-Speech
-// Assurez-vous que GOOGLE_APPLICATION_CREDENTIALS est configurée sur Vercel
-const ttsClient = new TextToSpeechClient();
+let ttsClientOptions = {};
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  try {
+    // Si la variable d'env contient le JSON directement (cas de Vercel)
+    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+    ttsClientOptions = { credentials };
+    console.log("Credentials Google Cloud parsées depuis la variable d'environnement.");
+  } catch (e) {
+    // Si ce n'est pas un JSON valide, on suppose que c'est un chemin de fichier (pour tests locaux par ex.)
+    // Dans ce cas, la bibliothèque cliente devrait le gérer automatiquement si la variable est un chemin.
+    // Mais pour Vercel, on s'attend à un JSON. Si le parsing échoue, c'est un problème de config.
+    console.error("Erreur lors du parsing de GOOGLE_APPLICATION_CREDENTIALS. Assurez-vous qu'elle contient le JSON valide de la clé de service ou un chemin vers le fichier de clé.", e);
+    // On pourrait choisir de ne pas initialiser ttsClient ou de le laisser essayer avec l'auth par défaut.
+    // Pour l'instant, on logue l'erreur et on laisse la bibliothèque tenter sa chance.
+  }
+} else {
+  console.warn("Variable d'environnement GOOGLE_APPLICATION_CREDENTIALS non définie. L'API Text-to-Speech pourrait ne pas fonctionner.");
+}
+const ttsClient = new TextToSpeechClient(ttsClientOptions);
 
 // Route de test
 app.get('/api/test', (req, res) => {
