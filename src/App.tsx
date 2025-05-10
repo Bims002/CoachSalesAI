@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Ajout de useEffect
+import { useState, useEffect } from 'react'; // React non importé directement
 import './App.css';
 import ScenarioSelection from './components/ScenarioSelection';
 import SimulationControls from './components/SimulationControls';
