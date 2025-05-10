@@ -185,3 +185,19 @@ button:disabled:hover {
   text-align: right; /* Aligner avec les messages utilisateur */
   padding-right: 0;
 }
+
+.play-audio-button {
+  background-color: #17a2b8; /* Turquoise, comme les H3 */
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  font-size: 0.8em;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px; /* Espace par rapport au texte du message IA */
+  vertical-align: middle;
+}
+
+.play-audio-button:hover {
+  background-color: #138496; /* Turquoise plus foncé */
+}

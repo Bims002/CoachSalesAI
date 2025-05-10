@@ -23,7 +23,10 @@ export interface Message {
   id: string;
   text: string;
   sender: 'user' | 'ai';
+  audioContent?: string | null;
 }
+
+const IS_MOBILE_DEVICE = /Mobi|Android/i.test(navigator.userAgent);
 
 function App() {
   type AppStep = 'scenarioSelection' | 'simulation' | 'results';
@@ -37,106 +40,81 @@ function App() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null);
 
-  const handleSpeechResult = useCallback((finalTranscript: string) => {
+  const handleSpeechResultCb = useCallback((finalTranscript: string) => {
     const trimmedTranscript = finalTranscript.trim();
     if (trimmedTranscript) {
-      setConversation(prevConversation => [
-        ...prevConversation,
-        { id: Date.now().toString() + '_user', text: trimmedTranscript, sender: 'user' }
-      ]);
+      setConversation(prev => [...prev, { id: Date.now().toString() + '_user', text: trimmedTranscript, sender: 'user' }]);
     }
-  }, []);
+  }, []); // setConversation est stable
 
-  const {
-    interimTranscript,
-    isListening,
-    startListening,
-    stopListening,
-    error: speechError,
-    browserSupportsSpeechRecognition
-  } = useSpeechRecognition({ onResult: handleSpeechResult });
+  const speechRecognitionHook = useSpeechRecognition({ onResult: handleSpeechResultCb });
+  const { interimTranscript, isListening, startListening, stopListening, error: speechError, browserSupportsSpeechRecognition } = speechRecognitionHook;
 
-  const getAiResponse = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
+  const playAiAudioCb = useCallback((audioContent: string) => {
+    if (isListening) stopListening();
+    setIsAiSpeaking(true);
+    const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+    audio.play().catch(e => { // Ajout de .catch pour les erreurs de play()
+      console.error("Erreur audio.play():", e);
+      setIsAiSpeaking(false); // S'assurer de réinitialiser l'état
+      if (currentStep === 'simulation') startListening(); // Tenter de redémarrer l'écoute
+    });
+    audio.onended = () => {
+      setIsAiSpeaking(false);
+      if (currentStep === 'simulation') startListening();
+    };
+    audio.onerror = (e) => {
+      console.error("Erreur de l'élément Audio:", e);
+      setIsAiSpeaking(false);
+      if (currentStep === 'simulation') startListening();
+    };
+  }, [currentStep, isListening, startListening, stopListening, setIsAiSpeaking]);
+
+  const getAiResponseCb = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
     if (!selectedScenario) return;
-
     setIsAiResponding(true);
     setApiError(null);
-
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userTranscript: userMessageText,
-          scenario: selectedScenario,
-          conversationHistory: currentConvHistory.slice(0, -1) 
-        }),
+        body: JSON.stringify({ userTranscript: userMessageText, scenario: selectedScenario, conversationHistory: currentConvHistory.slice(0, -1) }),
       });
-
-      setIsAiResponding(false); 
-
+      setIsAiResponding(false);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
-
       const data = await response.json();
       if (data.aiResponse) {
-        const aiMessage: Message = { id: Date.now().toString() + '_ai', text: data.aiResponse, sender: 'ai' };
+        const aiMessage: Message = { id: Date.now().toString() + '_ai', text: data.aiResponse, sender: 'ai', audioContent: data.audioContent };
         setConversation(prev => [...prev, aiMessage]);
-
-        if (data.audioContent) {
-          if (isListening) stopListening();
-          
-          setIsAiSpeaking(true);
-          const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-          audio.play();
-          audio.onended = () => {
-            setIsAiSpeaking(false);
-            if (currentStep === 'simulation') { // Condition simplifiée
-              startListening();
-            }
-          };
-          audio.onerror = () => {
-            console.error("Erreur de lecture audio");
-            setIsAiSpeaking(false);
-            if (currentStep === 'simulation') { // Condition simplifiée
-              startListening();
-            }
-          }
-        } else {
-          if (currentStep === 'simulation') { // Condition simplifiée
-            startListening();
-          }
+        if (data.audioContent && !IS_MOBILE_DEVICE) {
+          playAiAudioCb(data.audioContent);
+        } else if (!data.audioContent && currentStep === 'simulation') {
+          if (!isListening) startListening(); // Redémarrer seulement si pas déjà en écoute
         }
       }
     } catch (error) {
-      console.error("Erreur lors de l'appel à /api/chat ou lecture audio:", error);
-      let errorMessage = "Une erreur inconnue est survenue.";
-      if (error instanceof Error) { errorMessage = error.message; }
-      else if (typeof error === 'string') { errorMessage = error; }
-      setApiError(errorMessage);
+      console.error("Erreur API ou audio:", error);
+      let errMsg = "Une erreur inconnue est survenue.";
+      if (error instanceof Error) errMsg = error.message;
+      else if (typeof error === 'string') errMsg = error;
+      setApiError(errMsg);
       setIsAiResponding(false);
       setIsAiSpeaking(false);
     }
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore 
-  }, [selectedScenario, currentStep, isListening, startListening, stopListening, setConversation, setIsAiResponding, setApiError, setIsAiSpeaking]);
+  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, /*dépendances stables:*/ setConversation, setIsAiResponding, setApiError, setIsAiSpeaking]);
 
   useEffect(() => {
     if (conversation.length > 0) {
       const lastMessage = conversation[conversation.length - 1];
-      if (
-        lastMessage.sender === 'user' &&
-        lastMessage.id !== lastProcessedUserMessageId &&
-        !isAiResponding &&
-        !isAiSpeaking
-      ) {
+      if (lastMessage.sender === 'user' && lastMessage.id !== lastProcessedUserMessageId && !isAiResponding && !isAiSpeaking) {
         setLastProcessedUserMessageId(lastMessage.id);
-        getAiResponse(lastMessage.text, conversation);
+        getAiResponseCb(lastMessage.text, conversation);
       }
     }
-  }, [conversation, isAiResponding, isAiSpeaking, getAiResponse, lastProcessedUserMessageId, setLastProcessedUserMessageId]);
+  }, [conversation, isAiResponding, isAiSpeaking, getAiResponseCb, lastProcessedUserMessageId /*, setLastProcessedUserMessageId est stable*/]);
 
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
@@ -147,13 +125,9 @@ function App() {
   };
 
   const toggleListening = () => {
-    if (isAiSpeaking) return; 
-
-    if (isListening) {
-      stopListening();
-    } else {
-      startListening();
-    }
+    if (isAiSpeaking) return;
+    if (isListening) stopListening();
+    else startListening();
   };
 
   const handleEndSimulation = () => {
@@ -163,75 +137,53 @@ function App() {
   
   useEffect(() => {
     if (!browserSupportsSpeechRecognition && !speechError) {
-      alert("La reconnaissance vocale n'est pas supportée par votre navigateur.");
+      alert("La reconnaissance vocale n'est pas supportée.");
     }
   }, [browserSupportsSpeechRecognition, speechError]);
 
   return (
     <div className="app-container">
-      {apiError && <p style={{ color: 'orange', textAlign: 'center' }}>Erreur API: {apiError}</p>}
-      {speechError && <p style={{ color: 'red', textAlign: 'center' }}>{speechError}</p>}
-      <header>
-        <h1>CoachSales AI</h1>
-      </header>
+      {apiError && <p style={{color: 'orange', textAlign: 'center'}}>Erreur API: {apiError}</p>}
+      {speechError && <p style={{color: 'red', textAlign: 'center'}}>{speechError}</p>}
+      {IS_MOBILE_DEVICE && currentStep === 'simulation' && <p style={{textAlign: 'center', padding: '10px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px'}}>Note: Sur mobile, cliquez sur ▶️ à côté du message de l'IA pour l'entendre.</p>}
+      <header><h1>CoachSales AI</h1></header>
       <main>
         {currentStep === 'scenarioSelection' && (
           <section id="scenario-selection" className="app-section">
             <h2>Étape 1: Choisir un scénario</h2>
-            <ScenarioSelection 
-              scenarios={scenarios}
-              selectedScenario={selectedScenario}
-              onSelectScenario={handleSelectScenario}
-            />
+            <ScenarioSelection scenarios={scenarios} selectedScenario={selectedScenario} onSelectScenario={handleSelectScenario} />
           </section>
         )}
-
         {currentStep === 'simulation' && selectedScenario && (
           <>
             <section id="simulation-info" className="app-section">
-              <h2>Simulation en cours : {selectedScenario.title}</h2>
+              <h2>Simulation: {selectedScenario.title}</h2>
               <p className="placeholder-text">{selectedScenario.description}</p>
             </section>
-            
             <section id="simulation-controls" className="app-section">
               <h3>Votre tour :</h3>
-              <SimulationControls 
-                onToggleListening={toggleListening} 
-                isListening={isListening}
-                disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking} 
-              />
+              <SimulationControls onToggleListening={toggleListening} isListening={isListening} disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking} />
               {isAiResponding && !isAiSpeaking && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
               {isAiSpeaking && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'purple'}}>🔊 L'IA parle...</p>}
             </section>
-
             <section id="conversation-display" className="app-section">
               <h3>Conversation :</h3>
-              <ConversationView 
-                messages={conversation}
-                interimTranscript={interimTranscript}
-              />
+              <ConversationView messages={conversation} interimTranscript={interimTranscript} onPlayAiAudio={playAiAudioCb} isMobile={IS_MOBILE_DEVICE} />
             </section>
-            
-            <button onClick={handleEndSimulation} style={{marginTop: '20px', backgroundColor: '#dc3545'}}>
-              Terminer la simulation et voir les résultats
-            </button>
+            <button onClick={handleEndSimulation} style={{marginTop: '20px', backgroundColor: '#dc3545'}}>Terminer & Voir Résultats</button>
           </>
         )}
-
         {currentStep === 'results' && (
           <section id="results-display" className="app-section">
-            <h2>Étape 3: Résultats de la simulation</h2>
+            <h2>Étape 3: Résultats</h2>
             {selectedScenario && <p>Scénario: {selectedScenario.title}</p>}
             <ResultsView conversation={conversation} /> 
-            <button onClick={() => setCurrentStep('scenarioSelection')}>Nouvelle simulation</button>
+            <button onClick={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); }}>Nouvelle simulation</button>
           </section>
         )}
       </main>
-      <footer>
-        <p>&copy; {new Date().getFullYear()} CoachSales AI</p>
-      </footer>
+      <footer><p>&copy; {new Date().getFullYear()} CoachSales AI</p></footer>
     </div>
   );
 }
-
 export default App;
