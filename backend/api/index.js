@@ -7,9 +7,7 @@ const app = express();
 app.use(express.json());
 
 // Initialisation des clients API
-// Assurez-vous que GEMINI_API_KEY est définie dans vos variables d'environnement sur Vercel
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
 
 // Initialisation du client Text-to-Speech
 let ttsClientOptions = {};
@@ -50,11 +48,8 @@ app.post('/api/chat', async (req, res) => {
       return res.status(500).json({ error: 'Configuration du serveur incomplète (clé API manquante).' });
     }
 
-    // Construction du prompt pour Gemini
-    // Le prompt initial définit le rôle de l'IA et le contexte du scénario.
-    // Les messages suivants sont ajoutés à l'historique.
-    
-    let prompt = `Tu es un simulateur de client pour un commercial. Ton rôle est de jouer le client décrit dans le scénario suivant :
+    // Définir l'instruction système pour Gemini
+    const systemInstruction = `Tu es un simulateur de client pour un commercial. Ton rôle est de jouer le client décrit dans le scénario suivant :
     Scénario: ${scenario.title}
     Description du client: ${scenario.description}
     
@@ -62,47 +57,33 @@ app.post('/api/chat', async (req, res) => {
     Interagis naturellement. Pose des questions, exprime des objections ou de l'intérêt en accord avec ton rôle de client.
     Sois concis dans tes réponses (1-2 phrases).
     Ne termine pas la conversation trop vite, essaie d'avoir au moins 3-5 échanges.
-    Ne dis pas que tu es une IA ou un simulateur.
-    ---
-    `;
+    Ne dis pas que tu es une IA ou un simulateur.`;
 
-    // Construction de l'historique pour le modèle Gemini
-    // Gemini attend un format spécifique : { role: "user" | "model", parts: [{ text: "..." }] }
-    const geminiHistory = [];
+    const geminiModel = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-pro-latest",
+      systemInstruction: {
+        role: "system", // Ou un autre rôle si Gemini le préfère pour les instructions système
+        parts: [{ text: systemInstruction }],
+      }
+    });
 
-    // Ajout du prompt système comme premier message "utilisateur" pour guider le modèle
-    // (Certains modèles préfèrent cela, ou un champ "system instruction")
-    // Pour Gemini, on peut l'inclure dans le premier message utilisateur ou comme contexte.
-    // Ici, on va le mettre en contexte avant l'historique de la conversation.
-
-    if (conversationHistory.length === 0) {
-      // Premier tour, le commercial initie avec userTranscript
-      prompt += `Le commercial commence la conversation et dit : "${userTranscript}"\nRéponds en tant que client.`;
-    } else {
-      // Tours suivants, ajouter l'historique
-      conversationHistory.forEach(msg => {
-        geminiHistory.push({
-          role: msg.sender === 'user' ? 'user' : 'model', // 'user' pour le commercial, 'model' pour le client (IA)
-          parts: [{ text: msg.text }]
-        });
-      });
-      // Ajouter le dernier message du commercial (l'actuel userTranscript)
-      geminiHistory.push({ role: 'user', parts: [{ text: userTranscript }] });
-      // Le prompt initial est implicitement le contexte pour le chat.
-      // On peut aussi le passer explicitement si on utilise startChat avec un historique.
-    }
+    // Construire l'historique pour le modèle Gemini à partir de `conversationHistory`
+    // `conversationHistory` est l'historique jusqu'au dernier message de l'IA (ou vide si premier tour)
+    const geminiChatHistory = conversationHistory.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.text }],
+    }));
     
-    let aiResponseText;
+    // Démarrer une session de chat avec l'historique
+    const chat = geminiModel.startChat({
+      history: geminiChatHistory,
+    });
 
-    if (geminiHistory.length > 0) {
-      const chat = geminiModel.startChat({ history: geminiHistory.slice(0, -1) });
-      const result = await chat.sendMessage(userTranscript);
-      aiResponseText = result.response.text();
-    } else {
-      const result = await geminiModel.generateContent(prompt);
-      aiResponseText = result.response.text();
-    }
-    console.log("Texte de réponse de Gemini:", aiResponseText); // LOG AJOUTÉ
+    // Envoyer le message actuel de l'utilisateur
+    const result = await chat.sendMessage(userTranscript);
+    const aiResponseText = result.response.text();
+    
+    console.log("Texte de réponse de Gemini:", aiResponseText);
 
     if (!aiResponseText || aiResponseText.trim() === '') {
       console.log("Réponse de Gemini vide, renvoi d'une réponse par défaut.");
