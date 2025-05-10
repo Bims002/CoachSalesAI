@@ -68,6 +68,10 @@ function App() {
       if (data.aiResponse) {
         const aiMessage: Message = { id: Date.now().toString() + '_ai', text: data.aiResponse, sender: 'ai' };
         setConversation(prev => [...prev, aiMessage]);
+        // Si nous sommes toujours en mode simulation, redémarrer l'écoute pour le prochain tour de l'utilisateur.
+        if (currentStep === 'simulation' && !isListening) { // Vérifier aussi !isListening au cas où l'utilisateur aurait déjà cliqué pour arrêter
+          startListening();
+        }
       }
     } catch (error) {
       console.error("Erreur lors de l'appel à /api/chat:", error);
