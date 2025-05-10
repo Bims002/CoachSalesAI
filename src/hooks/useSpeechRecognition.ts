@@ -39,7 +39,7 @@ const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}) => {
     const recognition = new SpeechRecognitionAPI(); // Ceci est une instance de l'API SpeechRecognition
     recognitionRef.current = recognition; // Affecter l'instance à la ref
 
-    recognition.continuous = true;
+    recognition.continuous = false; // Changé à false pour un mode tour par tour
     recognition.interimResults = true;
     recognition.lang = 'fr-FR';
 

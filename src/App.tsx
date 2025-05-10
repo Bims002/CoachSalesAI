@@ -30,12 +30,14 @@ export interface Message {
 }
 
 function App() {
+  type AppStep = 'scenarioSelection' | 'simulation' | 'results';
+
+  const [currentStep, setCurrentStep] = useState<AppStep>('scenarioSelection');
   const [scenarios] = useState<Scenario[]>(scenariosData);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [conversation, setConversation] = useState<Message[]>([]);
-  // const [isSimulationRunning, setIsSimulationRunning] = useState(false); // Supprimé car non utilisé pour l'instant
-  const [isAiResponding, setIsAiResponding] = useState(false); // Nouvel état
-  const [apiError, setApiError] = useState<string | null>(null);   // Nouvel état
+  const [isAiResponding, setIsAiResponding] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Fonction pour appeler le backend et obtenir la réponse de l'IA
   const getAiResponse = async (userMessageText: string, currentConversation: Message[]) => {
@@ -108,28 +110,27 @@ function App() {
 
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
-    setConversation([]); // Réinitialiser la conversation si le scénario change
-    // setIsSimulationRunning(false); // Supprimé
-    if (isListening) stopListening(); // Arrêter l'écoute si en cours
+    setConversation([]);
+    if (isListening) stopListening();
     console.log("Scénario sélectionné:", scenario.title);
+    setCurrentStep('simulation'); // Passer à l'étape de simulation
   };
 
-  // Gérer le démarrage/arrêt de la simulation et de l'écoute
-  const toggleSimulationAndListening = () => {
-    if (!selectedScenario) {
-      alert("Veuillez d'abord sélectionner un scénario.");
-      return;
-    }
-
-    if (isListening) { // Si on écoute, on arrête
+  // Gérer le démarrage/arrêt de l'écoute pendant la simulation
+  const toggleListening = () => {
+    if (isListening) {
       stopListening();
-      // On pourrait considérer que la simulation s'arrête ici ou après la réponse de l'IA
-      // setIsSimulationRunning(false); // Pour l'instant, on arrête l'écoute seulement
-    } else { // Si on n'écoute pas, on commence
-      setConversation([]); // Réinitialiser la conversation à chaque nouveau démarrage de simulation
+    } else {
+      // Ne pas réinitialiser la conversation ici, car on est en cours de simulation
       startListening();
-      // setIsSimulationRunning(true); // Supprimé
     }
+  };
+
+  const handleEndSimulation = () => {
+    if (isListening) stopListening();
+    // Ici, on pourrait faire une analyse finale de la conversation avant de passer aux résultats
+    console.log("Simulation terminée. Conversation:", conversation);
+    setCurrentStep('results');
   };
   
   // Afficher un message d'erreur si la reconnaissance vocale n'est pas supportée
@@ -147,37 +148,57 @@ function App() {
         <h1>CoachSales AI</h1>
       </header>
       <main>
-        <section id="scenario-selection" className="app-section">
-          <h2>Section 1: Choisir un scénario</h2>
-          <ScenarioSelection 
-            scenarios={scenarios}
-            selectedScenario={selectedScenario}
-            onSelectScenario={handleSelectScenario}
-          />
-        </section>
+        {currentStep === 'scenarioSelection' && (
+          <section id="scenario-selection" className="app-section">
+            <h2>Étape 1: Choisir un scénario</h2>
+            <ScenarioSelection 
+              scenarios={scenarios}
+              selectedScenario={selectedScenario}
+              onSelectScenario={handleSelectScenario}
+            />
+          </section>
+        )}
 
-        <section id="simulation-start" className="app-section">
-          <h2>Section 2: Démarrer la simulation</h2>
-          <SimulationControls 
-            onToggleListening={toggleSimulationAndListening} 
-            isListening={isListening}
-            disabled={!selectedScenario || !browserSupportsSpeechRecognition || isAiResponding} 
-          />
-          {isAiResponding && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
-        </section>
+        {currentStep === 'simulation' && selectedScenario && (
+          <>
+            <section id="simulation-info" className="app-section">
+              <h2>Simulation en cours : {selectedScenario.title}</h2>
+              <p className="placeholder-text">{selectedScenario.description}</p>
+            </section>
+            
+            <section id="simulation-controls" className="app-section">
+              <h3>Votre tour :</h3>
+              <SimulationControls 
+                onToggleListening={toggleListening} 
+                isListening={isListening}
+                disabled={!browserSupportsSpeechRecognition || isAiResponding} 
+              />
+              {isAiResponding && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
+            </section>
 
-        <section id="conversation-display" className="app-section">
-          <h2>Section 3: Affichage de la conversation en direct</h2>
-          <ConversationView 
-            messages={conversation}
-            interimTranscript={interimTranscript}
-          />
-        </section>
+            <section id="conversation-display" className="app-section">
+              <h3>Conversation :</h3>
+              <ConversationView 
+                messages={conversation}
+                interimTranscript={interimTranscript}
+              />
+            </section>
+            
+            <button onClick={handleEndSimulation} style={{marginTop: '20px', backgroundColor: '#dc3545'}}>
+              Terminer la simulation et voir les résultats
+            </button>
+          </>
+        )}
 
-        <section id="results-display" className="app-section">
-          <h2>Section 4: Résultats</h2>
-          <ResultsView />
-        </section>
+        {currentStep === 'results' && (
+          <section id="results-display" className="app-section">
+            <h2>Étape 3: Résultats de la simulation</h2>
+            {selectedScenario && <p>Scénario: {selectedScenario.title}</p>}
+            {/* Passer la conversation complète à ResultsView pour affichage/analyse */}
+            <ResultsView conversation={conversation} /> 
+            <button onClick={() => setCurrentStep('scenarioSelection')}>Nouvelle simulation</button>
+          </section>
+        )}
       </main>
       <footer>
         <p>&copy; {new Date().getFullYear()} CoachSales AI</p>
