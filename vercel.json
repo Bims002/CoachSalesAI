@@ -2,6 +2,11 @@
   "version": 2,
   "builds": [
     {
+      "src": "package.json",
+      "use": "@vercel/vite",
+      "config": { "project": "./package.json" }
+    },
+    {
       "src": "backend/api/index.js",
       "use": "@vercel/node"
     }
