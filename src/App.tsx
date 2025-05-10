@@ -32,11 +32,11 @@ function App() {
   const [scenarios] = useState<Scenario[]>(scenariosData);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [conversation, setConversation] = useState<Message[]>([]);
-  const [isAiResponding, setIsAiResponding] = useState(false);
+  const [isAiResponding, setIsAiResponding] = useState(false); // Pour la génération de texte Gemini
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);   // Pour la lecture audio TTS
   const [apiError, setApiError] = useState<string | null>(null);
 
   const handleSpeechResult = useCallback((finalTranscript: string) => {
-    console.log("Transcription finale reçue (dans handleSpeechResult):", finalTranscript);
     const trimmedTranscript = finalTranscript.trim();
     if (trimmedTranscript) {
       setConversation(prevConversation => [
@@ -58,8 +58,7 @@ function App() {
   const getAiResponse = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
     if (!selectedScenario) return;
 
-    console.log('getAiResponse called with history length:', currentConvHistory.length);
-    setIsAiResponding(true);
+    setIsAiResponding(true); // L'IA (Gemini) commence à réfléchir
     setApiError(null);
 
     try {
@@ -69,47 +68,70 @@ function App() {
         body: JSON.stringify({
           userTranscript: userMessageText,
           scenario: selectedScenario,
-          conversationHistory: currentConvHistory.slice(0, -1)
+          conversationHistory: currentConvHistory.slice(0, -1) 
         }),
       });
+
+      setIsAiResponding(false); // L'IA (Gemini) a fini de générer le texte
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await response.json(); // data = { aiResponse: string, audioContent: string | null }
       if (data.aiResponse) {
         const aiMessage: Message = { id: Date.now().toString() + '_ai', text: data.aiResponse, sender: 'ai' };
         setConversation(prev => [...prev, aiMessage]);
-        if (currentStep === 'simulation' && !isListening) {
-          startListening();
+
+        if (data.audioContent) {
+          if (isListening) stopListening(); // S'assurer que l'écoute utilisateur est arrêtée
+          
+          setIsAiSpeaking(true);
+          const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+          audio.play();
+          audio.onended = () => {
+            setIsAiSpeaking(false);
+            if (currentStep === 'simulation' && !isListening) { // Ne redémarrer que si on est en simulation et pas déjà en écoute
+              startListening();
+            }
+          };
+          audio.onerror = () => {
+            console.error("Erreur de lecture audio");
+            setIsAiSpeaking(false);
+            // Peut-être redémarrer l'écoute ici aussi si TTS échoue mais Gemini a répondu
+            if (currentStep === 'simulation' && !isListening) {
+              startListening();
+            }
+          }
+        } else {
+          // Pas d'audio (TTS a échoué ou n'a pas été généré), redémarrer l'écoute si besoin
+          if (currentStep === 'simulation' && !isListening) {
+            startListening();
+          }
         }
       }
     } catch (error) {
-      console.error("Erreur lors de l'appel à /api/chat:", error);
+      console.error("Erreur lors de l'appel à /api/chat ou lecture audio:", error);
       let errorMessage = "Une erreur inconnue est survenue.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
+      if (error instanceof Error) { errorMessage = error.message; }
+      else if (typeof error === 'string') { errorMessage = error; }
       setApiError(errorMessage);
-    } finally {
-      setIsAiResponding(false);
+      setIsAiResponding(false); // S'assurer que c'est false en cas d'erreur aussi
+      setIsAiSpeaking(false); // Et que l'IA ne parle pas
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - Pour contourner une erreur persistante et obscure de Vercel/TypeScript sur la ligne des dépendances
-  }, [selectedScenario, currentStep, isListening, startListening, setConversation]);
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore - Pour contourner une erreur persistante et obscure de Vercel/TypeScript sur la ligne des dépendances
+  }, [selectedScenario, currentStep, isListening, startListening, stopListening, setConversation, setIsAiResponding, setApiError, setIsAiSpeaking]); // Ajout de stopListening et setIsAiSpeaking
 
   useEffect(() => {
     if (conversation.length > 0) {
       const lastMessage = conversation[conversation.length - 1];
-      if (lastMessage.sender === 'user' && !isAiResponding) {
+      if (lastMessage.sender === 'user' && !isAiResponding && !isAiSpeaking) { // Ne pas appeler si l'IA réfléchit ou parle
         getAiResponse(lastMessage.text, conversation);
       }
     }
-  }, [conversation, isAiResponding, getAiResponse]);
+  }, [conversation, isAiResponding, isAiSpeaking, getAiResponse]);
 
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
@@ -119,6 +141,8 @@ function App() {
   };
 
   const toggleListening = () => {
+    if (isAiSpeaking) return; // Ne rien faire si l'IA parle
+
     if (isListening) {
       stopListening();
     } else {
@@ -128,6 +152,7 @@ function App() {
 
   const handleEndSimulation = () => {
     if (isListening) stopListening();
+    if (isAiSpeaking) { /* Peut-être arrêter l'audio de l'IA aussi ? Pour l'instant non. */ }
     setCurrentStep('results');
   };
   
@@ -168,9 +193,10 @@ function App() {
               <SimulationControls 
                 onToggleListening={toggleListening} 
                 isListening={isListening}
-                disabled={!browserSupportsSpeechRecognition || isAiResponding} 
+                disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking} 
               />
-              {isAiResponding && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
+              {isAiResponding && !isAiSpeaking && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
+              {isAiSpeaking && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'purple'}}>🔊 L'IA parle...</p>}
             </section>
 
             <section id="conversation-display" className="app-section">

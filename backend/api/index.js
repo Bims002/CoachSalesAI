@@ -1,14 +1,19 @@
 const express = require('express');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { TextToSpeechClient } = require('@google-cloud/text-to-speech'); // Ajout du client TTS
 const app = express();
 
 // Middleware pour parser le JSON dans les requêtes
 app.use(express.json());
 
-// Initialisation du client Google Generative AI
+// Initialisation des clients API
 // Assurez-vous que GEMINI_API_KEY est définie dans vos variables d'environnement sur Vercel
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); // Ou "gemini-pro"
+const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+
+// Initialisation du client Text-to-Speech
+// Assurez-vous que GOOGLE_APPLICATION_CREDENTIALS est configurée sur Vercel
+const ttsClient = new TextToSpeechClient();
 
 // Route de test
 app.get('/api/test', (req, res) => {
@@ -73,30 +78,52 @@ app.post('/api/chat', async (req, res) => {
     let aiResponseText;
 
     if (geminiHistory.length > 0) {
-      // Utiliser un chat session pour les tours suivants
-      const chat = model.startChat({
-        history: geminiHistory.slice(0, -1), // Historique sans le dernier message utilisateur
-        // generationConfig: { maxOutputTokens: 100 } // Optionnel
-      });
-      const result = await chat.sendMessage(userTranscript); // Envoyer le dernier message utilisateur
-      const response = result.response;
-      aiResponseText = response.text();
+      const chat = geminiModel.startChat({ history: geminiHistory.slice(0, -1) });
+      const result = await chat.sendMessage(userTranscript);
+      aiResponseText = result.response.text();
     } else {
-      // Premier tour, utiliser generateContent avec le prompt complet
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      aiResponseText = response.text();
+      const result = await geminiModel.generateContent(prompt);
+      aiResponseText = result.response.text();
+    }
+
+    if (!aiResponseText || aiResponseText.trim() === '') {
+      // Gérer le cas où Gemini ne renvoie rien ou une chaîne vide
+      return res.json({ aiResponse: "Je ne sais pas quoi répondre à cela.", audioContent: null });
+    }
+
+    // 2. Convertir la réponse textuelle en audio
+    let audioContentBase64 = null;
+    try {
+      const ttsRequest = {
+        input: { text: aiResponseText },
+        voice: { languageCode: 'fr-FR', name: 'fr-FR-Wavenet-D' }, // Voix exemple, à ajuster
+        audioConfig: { audioEncoding: 'MP3' },
+      };
+      const [ttsResponse] = await ttsClient.synthesizeSpeech(ttsRequest);
+      audioContentBase64 = ttsResponse.audioContent.toString('base64');
+    } catch (ttsError) {
+      console.error('Erreur Text-to-Speech:', ttsError.message, ttsError.stack);
+      // Ne pas bloquer la réponse si TTS échoue, renvoyer juste le texte
     }
     
-    res.json({ aiResponse: aiResponseText });
+    res.json({ aiResponse: aiResponseText, audioContent: audioContentBase64 });
 
   } catch (error) {
     console.error('Erreur dans /api/chat:', error.message, error.stack);
-    // Transmettre plus de détails sur l'erreur si c'est une erreur de l'API Google
-    if (error.response && error.response.data) {
-      return res.status(500).json({ error: 'Erreur de l\'API Gemini.', details: error.response.data });
+    let errorMsg = 'Erreur interne du serveur.';
+    let errorDetails = null;
+    // Tenter de récupérer des détails plus spécifiques de l'erreur Gemini
+    if (error.response && error.response.promptFeedback && error.response.promptFeedback.blockReason) {
+        errorMsg = `Contenu bloqué par l'API Gemini: ${error.response.promptFeedback.blockReason}`;
+        errorDetails = error.response.promptFeedback;
+    } else if (error.message) {
+        errorMsg = error.message;
     }
-    res.status(500).json({ error: 'Erreur interne du serveur.' });
+    
+    if (error.response && error.response.data) { // Pour les erreurs HTTP générales de l'API
+        errorDetails = error.response.data;
+    }
+    res.status(500).json({ error: errorMsg, details: errorDetails });
   }
 });
 
