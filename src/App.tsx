@@ -27,6 +27,7 @@ export interface Message {
 }
 
 const IS_MOBILE_DEVICE = /Mobi|Android/i.test(navigator.userAgent);
+const MAX_HISTORY_MESSAGES = 4; // Réduit à 4 messages (2 tours) pour tester
 
 function App() {
   type AppStep = 'scenarioSelection' | 'simulation' | 'results';
@@ -45,7 +46,7 @@ function App() {
     if (trimmedTranscript) {
       setConversation(prev => [...prev, { id: Date.now().toString() + '_user', text: trimmedTranscript, sender: 'user' }]);
     }
-  }, []); // setConversation est stable
+  }, []);
 
   const speechRecognitionHook = useSpeechRecognition({ onResult: handleSpeechResultCb });
   const { interimTranscript, isListening, startListening, stopListening, error: speechError, browserSupportsSpeechRecognition } = speechRecognitionHook;
@@ -54,10 +55,10 @@ function App() {
     if (isListening) stopListening();
     setIsAiSpeaking(true);
     const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
-    audio.play().catch(e => { // Ajout de .catch pour les erreurs de play()
+    audio.play().catch(e => {
       console.error("Erreur audio.play():", e);
-      setIsAiSpeaking(false); // S'assurer de réinitialiser l'état
-      if (currentStep === 'simulation') startListening(); // Tenter de redémarrer l'écoute
+      setIsAiSpeaking(false);
+      if (currentStep === 'simulation') startListening();
     });
     audio.onended = () => {
       setIsAiSpeaking(false);
@@ -75,15 +76,23 @@ function App() {
     setIsAiResponding(true);
     setApiError(null);
     try {
+      // Envoyer seulement les N derniers messages de l'historique (excluant le message utilisateur actuel)
+      const historyForApi = currentConvHistory.slice(0, -1).slice(-MAX_HISTORY_MESSAGES);
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userTranscript: userMessageText, scenario: selectedScenario, conversationHistory: currentConvHistory.slice(0, -1) }),
+        body: JSON.stringify({ userTranscript: userMessageText, scenario: selectedScenario, conversationHistory: historyForApi }),
       });
       setIsAiResponding(false);
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+        // Essayer de parser comme JSON si possible, sinon utiliser le statut texte
+        let errorResponseMessage = `Erreur HTTP: ${response.status} ${response.statusText}`;
+        try {
+            const errorData = await response.json();
+            errorResponseMessage = errorData.error || errorResponseMessage;
+        } catch (e) { /* Ignorer si la réponse n'est pas JSON */ }
+        throw new Error(errorResponseMessage);
       }
       const data = await response.json();
       if (data.aiResponse) {
@@ -92,7 +101,7 @@ function App() {
         if (data.audioContent && !IS_MOBILE_DEVICE) {
           playAiAudioCb(data.audioContent);
         } else if (!data.audioContent && currentStep === 'simulation') {
-          if (!isListening) startListening(); // Redémarrer seulement si pas déjà en écoute
+          if (!isListening) startListening();
         }
       }
     } catch (error) {
@@ -104,7 +113,7 @@ function App() {
       setIsAiResponding(false);
       setIsAiSpeaking(false);
     }
-  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, /*dépendances stables:*/ setConversation, setIsAiResponding, setApiError, setIsAiSpeaking]);
+  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, stopListening, setIsAiSpeaking]); // Dépendances mises à jour
 
   useEffect(() => {
     if (conversation.length > 0) {
@@ -114,7 +123,7 @@ function App() {
         getAiResponseCb(lastMessage.text, conversation);
       }
     }
-  }, [conversation, isAiResponding, isAiSpeaking, getAiResponseCb, lastProcessedUserMessageId /*, setLastProcessedUserMessageId est stable*/]);
+  }, [conversation, isAiResponding, isAiSpeaking, getAiResponseCb, lastProcessedUserMessageId, setLastProcessedUserMessageId]);
 
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
