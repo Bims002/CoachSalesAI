@@ -85,9 +85,10 @@ app.post('/api/chat', async (req, res) => {
       const result = await geminiModel.generateContent(prompt);
       aiResponseText = result.response.text();
     }
+    console.log("Texte de réponse de Gemini:", aiResponseText); // LOG AJOUTÉ
 
     if (!aiResponseText || aiResponseText.trim() === '') {
-      // Gérer le cas où Gemini ne renvoie rien ou une chaîne vide
+      console.log("Réponse de Gemini vide, renvoi d'une réponse par défaut.");
       return res.json({ aiResponse: "Je ne sais pas quoi répondre à cela.", audioContent: null });
     }
 
@@ -101,9 +102,10 @@ app.post('/api/chat', async (req, res) => {
       };
       const [ttsResponse] = await ttsClient.synthesizeSpeech(ttsRequest);
       audioContentBase64 = ttsResponse.audioContent.toString('base64');
+      console.log("Audio généré par TTS (longueur base64):", audioContentBase64 ? audioContentBase64.length : 'null'); // LOG AJOUTÉ
     } catch (ttsError) {
       console.error('Erreur Text-to-Speech:', ttsError.message, ttsError.stack);
-      // Ne pas bloquer la réponse si TTS échoue, renvoyer juste le texte
+      // audioContentBase64 reste null
     }
     
     res.json({ aiResponse: aiResponseText, audioContent: audioContentBase64 });
