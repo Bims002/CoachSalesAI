@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; // React non importé directement
+import { useState, useEffect, useCallback } from 'react'; // Ajout de useCallback
 import './App.css';
 import ScenarioSelection from './components/ScenarioSelection';
 import SimulationControls from './components/SimulationControls';
@@ -39,8 +39,31 @@ function App() {
   const [isAiResponding, setIsAiResponding] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Fonction pour appeler le backend et obtenir la réponse de l'IA
-  const getAiResponse = async (userMessageText: string, currentConversation: Message[]) => {
+  // 1. Définir handleSpeechResult (sera passé au hook)
+  // Ce callback met juste à jour la conversation avec le message de l'utilisateur.
+  const handleSpeechResult = useCallback((finalTranscript: string) => {
+    console.log("Transcription finale reçue (dans handleSpeechResult):", finalTranscript);
+    const trimmedTranscript = finalTranscript.trim();
+    if (trimmedTranscript) {
+      setConversation(prevConversation => [
+        ...prevConversation,
+        { id: Date.now().toString() + '_user', text: trimmedTranscript, sender: 'user' }
+      ]);
+    }
+  }, []); // setConversation est stable
+
+  // 2. Initialiser useSpeechRecognition
+  const {
+    interimTranscript,
+    isListening,
+    startListening,
+    stopListening,
+    error: speechError,
+    browserSupportsSpeechRecognition
+  } = useSpeechRecognition({ onResult: handleSpeechResult });
+
+  // 3. Définir getAiResponse (sera appelé par un useEffect)
+  const getAiResponse = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
     if (!selectedScenario) return;
 
     setIsAiResponding(true);
@@ -85,32 +108,23 @@ function App() {
     } finally {
       setIsAiResponding(false);
     }
-  };
-  
-  const handleSpeechResult = (finalTranscript: string) => {
-    console.log("Transcription finale reçue:", finalTranscript);
-    const trimmedTranscript = finalTranscript.trim();
-    if (trimmedTranscript) {
-      // Ajoute le message utilisateur à la conversation, PUIS appelle l'IA
-      // Il faut passer la conversation *après* l'ajout du message utilisateur pour l'historique correct
-      setConversation(prevConversation => {
-        const userMessage: Message = { id: Date.now().toString() + '_user', text: trimmedTranscript, sender: 'user' };
-        const newConversation = [...prevConversation, userMessage];
-        getAiResponse(trimmedTranscript, newConversation); // Passer la nouvelle conversation
-        return newConversation;
-      });
-    }
-  };
+  // Dépendances pour getAiResponse : selectedScenario, currentStep, isListening, startListening.
+  // Ajout de setConversation pour apaiser une possible erreur de linter/TS, bien qu'elle soit stable.
+  }, [selectedScenario, currentStep, isListening, startListening, setConversation]);
 
-  const {
-    // transcript, // Supprimé car non utilisé directement ici
-    interimTranscript, // Transcription intermédiaire actuelle
-    isListening,
-    startListening,
-    stopListening,
-    error: speechError,
-    browserSupportsSpeechRecognition
-  } = useSpeechRecognition({ onResult: handleSpeechResult });
+  // 4. useEffect pour appeler getAiResponse lorsque la conversation change (nouveau message utilisateur)
+  useEffect(() => {
+    if (conversation.length > 0) {
+      const lastMessage = conversation[conversation.length - 1];
+      if (lastMessage.sender === 'user' && !isAiResponding) {
+        // Le dernier message est de l'utilisateur, et l'IA ne répond pas déjà.
+        // L'historique à envoyer à l'IA est la conversation actuelle (qui inclut le dernier message utilisateur).
+        getAiResponse(lastMessage.text, conversation);
+      }
+    }
+  // Dépendances : conversation, isAiResponding, getAiResponse.
+  }, [conversation, isAiResponding, getAiResponse]);
+
 
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
