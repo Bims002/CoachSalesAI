@@ -66,6 +66,7 @@ function App() {
   const getAiResponse = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
     if (!selectedScenario) return;
 
+    console.log('getAiResponse called with history length:', currentConvHistory.length); // Forcer l'utilisation
     setIsAiResponding(true);
     setApiError(null);
 
@@ -109,8 +110,7 @@ function App() {
       setIsAiResponding(false);
     }
   // Dépendances pour getAiResponse : selectedScenario, currentStep, isListening, startListening.
-  // Ajout de setConversation pour apaiser une possible erreur de linter/TS, bien qu'elle soit stable.
-  }, [selectedScenario, currentStep, isListening, startListening, setConversation]);
+  }, [selectedScenario, currentStep, isListening, startListening]);
 
   // 4. useEffect pour appeler getAiResponse lorsque la conversation change (nouveau message utilisateur)
   useEffect(() => {
