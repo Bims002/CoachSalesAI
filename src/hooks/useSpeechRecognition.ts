@@ -1,23 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Ajout de useRef
 
 // Vérifier la compatibilité du navigateur avec Web Speech API
-// Ces variables sont maintenant potentiellement typées grâce à @types/dom-speech-recognition
-const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 const browserSupportsSpeechRecognition = !!SpeechRecognitionAPI;
 
 interface UseSpeechRecognitionOptions {
   onResult?: (transcript: string) => void;
-  onError?: (event: SpeechRecognitionErrorEvent) => void; // Utilisation du type spécifique
+  onError?: (event: any) => void; // Remplacé par any
   onEnd?: () => void;
 }
 
-interface SpeechRecognitionState {
-  transcript: string;
-  interimTranscript: string;
-  isListening: boolean;
-  error: string | null;
-  browserSupportsSpeechRecognition: boolean;
-}
+// interface SpeechRecognitionState { // Supprimé car non utilisé
+//   transcript: string;
+//   interimTranscript: string;
+//   isListening: boolean;
+//   error: string | null;
+//   browserSupportsSpeechRecognition: boolean;
+// }
 
 const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}) => {
   const { onResult, onError, onEnd } = options;
@@ -28,8 +27,7 @@ const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}) => {
   const [error, setError] = useState<string | null>(null);
 
   // Instance de SpeechRecognition, sera initialisée plus tard
-  // Le type SpeechRecognition (instance) devrait être globalement disponible maintenant
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any | null>(null); // Remplacé par any
 
   useEffect(() => {
     if (!browserSupportsSpeechRecognition) {
@@ -38,12 +36,14 @@ const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}) => {
     }
 
     // Utiliser SpeechRecognitionAPI qui a été vérifié
-    const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = true; // Continue la reconnaissance jusqu'à arrêt explicite
-    recognition.interimResults = true; // Permet d'avoir des résultats intermédiaires
-    recognition.lang = 'fr-FR'; // Langue de reconnaissance, à rendre configurable plus tard
+    const recognition = new SpeechRecognitionAPI(); // Ceci est une instance de l'API SpeechRecognition
+    recognitionRef.current = recognition; // Affecter l'instance à la ref
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => { // Typage de l'événement
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'fr-FR';
+
+    recognition.onresult = (event: any) => { // Remplacé par any
       let finalTranscript = '';
       let currentInterim = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -55,7 +55,6 @@ const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}) => {
         }
       }
       
-      // Mettre à jour la transcription finale seulement si elle change pour éviter des re-render inutiles
       if (finalTranscript) {
         setTranscript(prev => prev + finalTranscript);
       }
@@ -66,18 +65,19 @@ const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}) => {
       }
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => { // Typage de l'événement
+    recognition.onerror = (event: any) => { // Remplacé par any
       console.error('Speech recognition error:', event.error, event.message);
-      let errorMessage = `Erreur de reconnaissance vocale: ${event.error}`;
+      let errorMessage = `Erreur de reconnaissance vocale: ${event.error || 'inconnue'}`;
       if (event.message) {
         errorMessage += ` (${event.message})`;
       }
-      // Fournir des conseils plus spécifiques pour les erreurs courantes
-      if (event.error === 'no-speech') {
+      
+      const errorType = event.error || '';
+      if (errorType === 'no-speech') {
         errorMessage = "Aucune parole n'a été détectée. Veuillez vérifier votre microphone et parler clairement.";
-      } else if (event.error === 'audio-capture') {
+      } else if (errorType === 'audio-capture') {
         errorMessage = "Problème de capture audio. Vérifiez que votre microphone est bien connecté et non utilisé par une autre application.";
-      } else if (event.error === 'not-allowed') {
+      } else if (errorType === 'not-allowed') {
         errorMessage = "Permission d'utiliser le microphone refusée ou non accordée.";
       }
       setError(errorMessage);

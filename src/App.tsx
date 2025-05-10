@@ -33,7 +33,7 @@ function App() {
   const [scenarios] = useState<Scenario[]>(scenariosData);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [conversation, setConversation] = useState<Message[]>([]);
-  const [isSimulationRunning, setIsSimulationRunning] = useState(false);
+  // const [isSimulationRunning, setIsSimulationRunning] = useState(false); // Supprimé car non utilisé pour l'instant
   const [isAiResponding, setIsAiResponding] = useState(false); // Nouvel état
   const [apiError, setApiError] = useState<string | null>(null);   // Nouvel état
 
@@ -97,7 +97,7 @@ function App() {
   };
 
   const {
-    transcript, // Transcription accumulée par le hook (morceaux finaux)
+    // transcript, // Supprimé car non utilisé directement ici
     interimTranscript, // Transcription intermédiaire actuelle
     isListening,
     startListening,
@@ -109,7 +109,7 @@ function App() {
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
     setConversation([]); // Réinitialiser la conversation si le scénario change
-    setIsSimulationRunning(false); // Arrêter la simulation si en cours
+    // setIsSimulationRunning(false); // Supprimé
     if (isListening) stopListening(); // Arrêter l'écoute si en cours
     console.log("Scénario sélectionné:", scenario.title);
   };
@@ -128,7 +128,7 @@ function App() {
     } else { // Si on n'écoute pas, on commence
       setConversation([]); // Réinitialiser la conversation à chaque nouveau démarrage de simulation
       startListening();
-      setIsSimulationRunning(true); // Marquer la simulation comme active
+      // setIsSimulationRunning(true); // Supprimé
     }
   };
   
