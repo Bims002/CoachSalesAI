@@ -76,8 +76,15 @@ function App() {
     setIsAiResponding(true);
     setApiError(null);
     try {
-      // Envoyer seulement les N derniers messages de l'historique (excluant le message utilisateur actuel)
-      const historyForApi = currentConvHistory.slice(0, -1).slice(-MAX_HISTORY_MESSAGES);
+      // Envoyer seulement les N derniers messages de l'historique, sans leur contenu audio
+      const historyForApi = currentConvHistory
+        .slice(0, -1) // Exclure le dernier message utilisateur (actuel), qui est envoyé via userTranscript
+        .slice(-MAX_HISTORY_MESSAGES) // Prendre les N derniers messages de cet historique
+        .map(msg => ({ // Ne garder que les champs nécessaires pour l'API Gemini
+          id: msg.id, // L'ID peut être utile pour le débogage, mais pas essentiel pour Gemini
+          text: msg.text,
+          sender: msg.sender
+        }));
 
       const response = await fetch('/api/chat', {
         method: 'POST',
