@@ -1,0 +1,155 @@
+:root {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Police de App.css */
+  line-height: 1.6; /* De App.css */
+  font-weight: 400;
+
+  color-scheme: light dark; /* Gardons la détection de thème pour l'instant */
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Styles pour #root pour s'assurer qu'il prend la place nécessaire */
+#root {
+  width: 100%;
+  min-height: 100vh; /* S'assurer qu'il remplit la hauteur de la vue */
+  /* display: flex; et flex-direction: column; peuvent être utiles si le footer doit coller en bas */
+}
+
+a {
+  font-weight: 500;
+  color: #007bff; /* Couleur de lien cohérente avec le thème bleu */
+  text-decoration: none; /* Pas de soulignement par défaut */
+}
+a:hover {
+  color: #0056b3;
+  text-decoration: underline; /* Soulignement au survol */
+}
+
+body {
+  margin: 0;
+  padding: 0; /* Assurer aucun padding */
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #f0f2f5; /* Couleur de fond de App.css */
+  color: #333; /* Couleur de texte de App.css */
+}
+
+/* Les styles h1 et button de App.css sont plus spécifiques et devraient prévaloir.
+   Nous pouvons supprimer ou commenter les styles génériques h1 et button ici
+   pour éviter les conflits ou la confusion, ou les laisser s'ils servent de fallback.
+   Pour l'instant, je les commente pour prioriser ceux de App.css. */
+
+/* h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+} */
+
+/* button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+} */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547; /* Gardé de l'original */
+    /* background-color: #ffffff;  Commenté car body gère maintenant la couleur de fond */
+  }
+  /* a:hover {
+    color: #747bff; Commenté pour garder la cohérence avec le thème bleu
+  } */
+  /* button {
+    background-color: #f9f9f9; Commenté car App.css gère les styles de bouton
+  } */
+}
+
+/* Styles spécifiques pour le mode sombre si color-scheme: dark est actif */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #121212; /* Fond sombre standard */
+    color: #e0e0e0; /* Texte clair */
+  }
+
+  .app-container {
+    background-color: #1e1e1e; /* Conteneur un peu plus clair que le body */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4); /* Ombre plus visible en mode sombre */
+  }
+
+  header {
+    background-color: #0056b3; /* Bleu plus foncé pour le header en mode sombre */
+  }
+
+  .app-section {
+    background-color: #2c2c2c; /* Sections encore un peu plus claires */
+    border-color: #3a3a3a;
+  }
+
+  .app-section h2 {
+    color: #58a6ff; /* Titres de section en bleu clair */
+    border-bottom-color: #3a3a3a;
+  }
+
+  .app-section h3 {
+    color: #61dafb; /* Turquoise clair pour h3 */
+  }
+
+  .app-section h4 { /* Style pour h4 en mode sombre */
+    color: #adb5bd; /* Gris clair pour une bonne lisibilité */
+  }
+
+  .app-section ul li {
+    background-color: #3a3a3a;
+    border-color: #4f4f4f;
+    color: #dee2e6; /* Couleur de texte claire pour une bonne lisibilité en mode sombre */
+  }
+
+  .app-section ul li:hover {
+    background-color: #4f4f4f;
+    border-color: #666666;
+  }
+
+  footer {
+    border-top-color: #3a3a3a;
+    color: #a0a0a0;
+  }
+
+  button {
+    background-color: #0069d9; /* Bouton bleu en mode sombre */
+    /* color: white; déjà défini */
+  }
+  button:hover {
+    background-color: #0056b3;
+  }
+
+  /* Ajustement pour placeholder-text en mode sombre */
+  .placeholder-text {
+    color: #868e96; /* Un gris un peu plus clair qu'en mode clair */
+  }
+
+  /* Ajustement pour la description du scénario sélectionné en mode sombre */
+  .selected-scenario-description {
+    background-color: #233a4c; /* Fond bleu très sombre */
+    border-left-color: #007bff; 
+    color: #90cfff; /* Texte bleu clair */
+  }
+
+  .selected-scenario-description h4 {
+    color: #90cfff; /* Assurer que le h4 hérite bien */
+  }
+}

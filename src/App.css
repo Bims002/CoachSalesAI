@@ -1,0 +1,187 @@
+/* Styles pour CoachSales AI viendront ici */
+
+.app-container {
+  max-width: 800px; /* Un peu plus étroit pour une meilleure lisibilité sur grand écran */
+  margin: 40px auto; /* Plus de marge en haut/bas */
+  padding: 30px;   /* Plus de padding interne */
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* Ombre plus douce */
+  border-radius: 8px; /* Coins arrondis pour le conteneur principal */
+}
+
+header {
+  background-color: #007bff;
+  color: white;
+  padding: 20px; /* Augmentation du padding */
+  text-align: center;
+  margin-bottom: 30px; /* Plus de marge en bas */
+  border-radius: 6px 6px 0 0; /* Coins arrondis en haut, alignés avec app-container */
+}
+
+header h1 {
+  margin: 0;
+  font-size: 2em; /* Taille de police un peu plus grande */
+}
+
+.app-section {
+  margin-bottom: 35px; /* Espacement légèrement augmenté */
+  padding: 25px;       /* Padding interne augmenté */
+  border: 1px solid #e0e0e0; /* Bordure plus subtile */
+  border-radius: 6px;
+  background-color: #fff; /* Fond blanc pour les sections aussi */
+}
+
+.app-section h2 {
+  margin-top: 0;
+  margin-bottom: 20px; /* Plus d'espace sous les titres h2 */
+  color: #0056b3;
+  font-size: 1.5em; /* Taille de police pour h2 */
+  border-bottom: 1px solid #eee; /* Ligne de séparation sous h2 */
+  padding-bottom: 10px; /* Espace pour la ligne */
+}
+
+/* Style pour les h3 à l'intérieur des composants (ex: "Choisissez un scénario :") */
+.app-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #17a2b8; /* Couleur différente pour h3 (turquoise) */
+  font-size: 1.25em;
+}
+
+/* Style pour les h4 à l'intérieur des sections (ex: "Score Global :") */
+.app-section h4 {
+  margin-top: 10px; /* Un peu d'espace au-dessus */
+  margin-bottom: 8px;
+  color: #495057; /* Gris foncé, plus lisible */
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+footer {
+  text-align: center;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+  font-size: 0.85em; /* Taille de police légèrement réduite */
+  color: #6c757d; /* Couleur de texte plus douce */
+}
+
+button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 12px 20px; /* Padding augmenté pour un bouton plus grand */
+  font-size: 1em;
+  font-weight: bold; /* Texte en gras */
+  border-radius: 5px; /* Coins légèrement plus arrondis */
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #218838; /* Vert plus foncé au survol */
+}
+
+ul {
+  list-style-type: none; /* Suppression des puces par défaut */
+  padding-left: 0;
+}
+
+.app-section ul li { /* Ciblage plus spécifique pour les li dans les sections */
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  cursor: pointer; /* Indique qu'ils sont cliquables */
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s; /* Ajout de color à la transition */
+  color: #212529; /* Couleur de texte plus foncée pour une meilleure lisibilité */
+}
+
+.app-section ul li:hover {
+  background-color: #e9ecef;
+  border-color: #ced4da;
+}
+
+.app-section ul li.selected {
+  background-color: #007bff; /* Bleu pour l'élément sélectionné */
+  color: white;
+  border-color: #0056b3;
+  font-weight: bold;
+}
+
+/* Style pour la description du scénario sélectionné */
+.selected-scenario-description {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #e9f7ff; /* Fond bleu clair */
+  border-left: 4px solid #007bff; /* Bordure gauche bleue */
+  color: #004085; /* Texte bleu foncé */
+}
+
+.selected-scenario-description h4 {
+  margin-top: 0;
+  margin-bottom: 5px;
+  color: #004085;
+}
+
+/* Styles pour les placeholders de texte (par exemple, dans ConversationView) */
+.placeholder-text {
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Style pour les boutons désactivés */
+button:disabled {
+  background-color: #6c757d; /* Gris pour désactivé */
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+button:disabled:hover {
+  background-color: #5a6268; /* Gris un peu plus foncé au survol si désactivé */
+}
+
+/* Styles pour la liste des messages de conversation */
+.messages-list {
+  max-height: 300px; /* Hauteur maximale, avec scroll si dépasse */
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #f8f9fa; /* Fond légèrement différent pour la zone de chat */
+}
+
+.message {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  line-height: 1.4;
+  max-width: 80%; /* Les messages ne prennent pas toute la largeur */
+}
+
+.message p {
+  margin: 0;
+}
+
+.message.user {
+  background-color: #007bff; /* Bleu pour l'utilisateur */
+  color: white;
+  margin-left: auto; /* Aligner à droite */
+  text-align: right;
+}
+
+.message.ai {
+  background-color: #e9ecef; /* Gris clair pour l'IA */
+  color: #212529;
+  margin-right: auto; /* Aligner à gauche */
+  text-align: left;
+}
+
+.message.interim {
+  background-color: transparent;
+  color: #28a745; /* Vert pour la transcription en cours */
+  font-style: italic;
+  text-align: right; /* Aligner avec les messages utilisateur */
+  padding-right: 0;
+}
