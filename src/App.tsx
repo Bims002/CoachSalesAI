@@ -35,7 +35,7 @@ function App() {
   const [isAiResponding, setIsAiResponding] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null); // Nouvel état
+  const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null);
 
   const handleSpeechResult = useCallback((finalTranscript: string) => {
     const trimmedTranscript = finalTranscript.trim();
@@ -45,7 +45,7 @@ function App() {
         { id: Date.now().toString() + '_user', text: trimmedTranscript, sender: 'user' }
       ]);
     }
-  }, []); // setConversation est stable
+  }, []);
 
   const {
     interimTranscript,
@@ -93,19 +93,19 @@ function App() {
           audio.play();
           audio.onended = () => {
             setIsAiSpeaking(false);
-            if (currentStep === 'simulation' && !isListening) {
+            if (currentStep === 'simulation') { // Condition simplifiée
               startListening();
             }
           };
           audio.onerror = () => {
             console.error("Erreur de lecture audio");
             setIsAiSpeaking(false);
-            if (currentStep === 'simulation' && !isListening) {
+            if (currentStep === 'simulation') { // Condition simplifiée
               startListening();
             }
           }
         } else {
-          if (currentStep === 'simulation' && !isListening) {
+          if (currentStep === 'simulation') { // Condition simplifiée
             startListening();
           }
         }
@@ -128,11 +128,11 @@ function App() {
       const lastMessage = conversation[conversation.length - 1];
       if (
         lastMessage.sender === 'user' &&
-        lastMessage.id !== lastProcessedUserMessageId && // Vérifier si ce message a déjà été traité
+        lastMessage.id !== lastProcessedUserMessageId &&
         !isAiResponding &&
         !isAiSpeaking
       ) {
-        setLastProcessedUserMessageId(lastMessage.id); // Marquer comme traité
+        setLastProcessedUserMessageId(lastMessage.id);
         getAiResponse(lastMessage.text, conversation);
       }
     }
@@ -143,7 +143,7 @@ function App() {
     setConversation([]);
     if (isListening) stopListening();
     setCurrentStep('simulation');
-    setLastProcessedUserMessageId(null); // Réinitialiser pour un nouveau scénario
+    setLastProcessedUserMessageId(null);
   };
 
   const toggleListening = () => {
@@ -152,12 +152,6 @@ function App() {
     if (isListening) {
       stopListening();
     } else {
-      // Quand on commence une nouvelle écoute manuellement, réinitialiser l'ID du dernier message traité
-      // pour permettre à la nouvelle transcription de déclencher une réponse IA.
-      // Cependant, handleSpeechResult va créer un nouveau message avec un nouvel ID.
-      // La réinitialisation de conversation dans toggleListening (si on commence un nouveau tour)
-      // a été enlevée car la conversation est censée être continue.
-      // setConversation([]); // Ne pas faire ça ici, la conversation est continue.
       startListening();
     }
   };
