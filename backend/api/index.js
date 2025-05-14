@@ -127,6 +127,84 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// Nouvelle route pour l'analyse de la simulation
+app.post('/api/analyze', async (req, res) => {
+  try {
+    const { conversation } = req.body; // Recevoir la conversation complète
+
+    if (!conversation || !Array.isArray(conversation)) {
+      return res.status(400).json({ error: 'La conversation est requise et doit être un tableau.' });
+    }
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY n\'est pas définie.');
+      return res.status(500).json({ error: 'Configuration du serveur incomplète (clé API manquante).' });
+    }
+
+    // Construire le prompt pour l'analyse
+    const analysisPrompt = `Analyse la conversation de vente suivante entre un commercial (rôle "user") et un client IA (rôle "model").
+    Évalue la performance du commercial.
+    Fournis un score global sur 100, une liste de conseils personnalisés pour le commercial, et une liste de points spécifiques à améliorer.
+    
+    Conversation:
+    ${conversation.map(msg => `${msg.sender === 'user' ? 'Commercial' : 'Client IA'}: ${msg.text}`).join('\n')}
+    
+    Fournis ta réponse au format JSON, avec les champs suivants :
+    {
+      "score": number, // Score global sur 100 (ex: 75)
+      "conseils": string[], // Liste de conseils (ex: ["Améliorer l'écoute active", "Poser plus de questions ouvertes"])
+      "ameliorations": string[] // Liste de points à améliorer (ex: ["Interruption du client", "Manque de clarté sur les bénéfices"])
+    }
+    Assure-toi que la réponse est un JSON valide et ne contient rien d'autre.`;
+
+    const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); // Utiliser le même modèle pour l'analyse
+
+    const result = await geminiModel.generateContent(analysisPrompt);
+    const analysisText = result.response.text();
+
+    console.log("Réponse d'analyse de Gemini:", analysisText);
+
+    // Tenter de parser la réponse JSON de Gemini
+    let analysisResults = null;
+    try {
+      // Gemini peut parfois inclure le JSON dans des blocs de code markdown ```json ... ```
+      const jsonMatch = analysisText.match(/```json\n([\s\S]*?)\n```/);
+      if (jsonMatch && jsonMatch[1]) {
+        analysisResults = JSON.parse(jsonMatch[1]);
+      } else {
+        // Si pas de bloc de code, essayer de parser directement
+        analysisResults = JSON.parse(analysisText);
+      }
+      // Valider la structure de base
+      if (typeof analysisResults.score !== 'number' || !Array.isArray(analysisResults.conseils) || !Array.isArray(analysisResults.ameliorations)) {
+          throw new Error("Structure JSON inattendue de l'analyse.");
+      }
+
+    } catch (parseError) {
+      console.error('Erreur lors du parsing de la réponse d\'analyse de Gemini:', parseError.message, parseError.stack);
+      // Renvoyer une erreur spécifique si le parsing échoue
+      return res.status(500).json({ error: 'Erreur lors du traitement de l\'analyse par l\'IA.', details: parseError.message });
+    }
+
+    res.json(analysisResults);
+
+  } catch (error) {
+    console.error('Erreur dans /api/analyze:', error.message, error.stack);
+    let errorMsg = 'Erreur interne du serveur lors de l\'analyse.';
+    let errorDetails = null;
+    if (error.response && error.response.promptFeedback && error.response.promptFeedback.blockReason) {
+        errorMsg = `Contenu bloqué par l'API Gemini lors de l'analyse: ${error.response.promptFeedback.blockReason}`;
+        errorDetails = error.response.promptFeedback;
+    } else if (error.message) {
+        errorMsg = error.message;
+    }
+     if (error.response && error.response.data) {
+        errorDetails = error.response.data;
+    }
+    res.status(500).json({ error: errorMsg, details: errorDetails });
+  }
+});
+
+
 // Exporter l'application Express pour Vercel
 // Vercel s'attend à ce que le fichier par défaut exporte la fonction handler.
 // Si ce fichier est à la racine du dossier /api, Vercel le gère automatiquement.

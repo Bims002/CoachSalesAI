@@ -40,6 +40,8 @@ function App() {
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<any | null>(null); // Nouvel état pour les résultats d'analyse
+  const [isAnalyzing, setIsAnalyzing] = useState(false); // Nouvel état pour l'indicateur d'analyse
 
   const handleSpeechResultCb = useCallback((finalTranscript: string) => {
     const trimmedTranscript = finalTranscript.trim();
@@ -120,17 +122,63 @@ function App() {
       setIsAiResponding(false);
       setIsAiSpeaking(false);
     }
-  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, stopListening, setIsAiSpeaking]); // Dépendances mises à jour
+  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, stopListening, setIsAiSpeaking, setConversation, setIsAiResponding, setApiError]); // Dépendances mises à jour
+
+  // Fonction pour lancer l'analyse de la conversation
+  const runAnalysis = useCallback(async () => {
+    if (conversation.length === 0) {
+      console.warn("Aucune conversation à analyser.");
+      setAnalysisResults(null);
+      setCurrentStep('results'); // Passer quand même aux résultats, mais vides
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setApiError(null); // Réinitialiser les erreurs API pour l'analyse
+
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation }), // Envoyer la conversation complète
+      });
+
+      setIsAnalyzing(false);
+
+      if (!response.ok) {
+        let errorResponseMessage = `Erreur HTTP lors de l'analyse: ${response.status} ${response.statusText}`;
+        try {
+            const errorData = await response.json();
+            errorResponseMessage = errorData.error || errorResponseMessage;
+        } catch (e) { /* Ignorer si la réponse n'est pas JSON */ }
+        throw new Error(errorResponseMessage);
+      }
+
+      const data = await response.json();
+      setAnalysisResults(data); // Stocker les résultats
+      setCurrentStep('results'); // Passer à l'étape des résultats
+
+    } catch (error) {
+      console.error("Erreur lors de l'analyse:", error);
+      let errMsg = "Une erreur est survenue lors de l'analyse de la simulation.";
+      if (error instanceof Error) errMsg = error.message;
+      else if (typeof error === 'string') errMsg = error;
+      setApiError(errMsg);
+      setIsAnalyzing(false);
+      setAnalysisResults(null); // S'assurer que les anciens résultats sont effacés
+      setCurrentStep('results'); // Passer quand même aux résultats pour afficher l'erreur
+    }
+  }, [conversation, setAnalysisResults, setCurrentStep, setIsAnalyzing, setApiError]); // Dépendances
 
   useEffect(() => {
     if (conversation.length > 0) {
       const lastMessage = conversation[conversation.length - 1];
-      if (lastMessage.sender === 'user' && lastMessage.id !== lastProcessedUserMessageId && !isAiResponding && !isAiSpeaking) {
+      if (lastMessage.sender === 'user' && lastMessage.id !== lastProcessedUserMessageId && !isAiResponding && !isAiSpeaking && !isAnalyzing) { // Ne pas appeler si l'IA réfléchit/parle ou si l'analyse est en cours
         setLastProcessedUserMessageId(lastMessage.id);
         getAiResponseCb(lastMessage.text, conversation);
       }
     }
-  }, [conversation, isAiResponding, isAiSpeaking, getAiResponseCb, lastProcessedUserMessageId, setLastProcessedUserMessageId]);
+  }, [conversation, isAiResponding, isAiSpeaking, isAnalyzing, getAiResponseCb, lastProcessedUserMessageId, setLastProcessedUserMessageId]); // Dépendances mises à jour
 
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
@@ -138,17 +186,20 @@ function App() {
     if (isListening) stopListening();
     setCurrentStep('simulation');
     setLastProcessedUserMessageId(null);
+    setAnalysisResults(null); // Réinitialiser les résultats d'analyse
+    setApiError(null); // Réinitialiser les erreurs API
   };
 
   const toggleListening = () => {
-    if (isAiSpeaking) return;
+    if (isAiSpeaking || isAnalyzing) return; // Ne rien faire si l'IA parle ou si l'analyse est en cours
     if (isListening) stopListening();
     else startListening();
   };
 
   const handleEndSimulation = () => {
     if (isListening) stopListening();
-    setCurrentStep('results');
+    // Ne pas changer d'étape ici, runAnalysis le fera après avoir obtenu les résultats
+    runAnalysis(); 
   };
   
   useEffect(() => {
@@ -161,7 +212,7 @@ function App() {
     <div className="app-container">
       {apiError && <p style={{color: 'orange', textAlign: 'center'}}>Erreur API: {apiError}</p>}
       {speechError && <p style={{color: 'red', textAlign: 'center'}}>{speechError}</p>}
-      {IS_MOBILE_DEVICE && currentStep === 'simulation' && <p style={{textAlign: 'center', padding: '10px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px'}}>Note: Sur mobile, cliquez sur ▶️ à côté du message de l'IA pour l'entendre.</p>}
+      {IS_MOBILE_DEVICE && currentStep === 'simulation' && !isAnalyzing && <p style={{textAlign: 'center', padding: '10px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px'}}>Note: Sur mobile, cliquez sur ▶️ à côté du message de l'IA pour l'entendre.</p>}
       <header><h1>CoachSales AI</h1></header>
       <main>
         {currentStep === 'scenarioSelection' && (
@@ -178,23 +229,39 @@ function App() {
             </section>
             <section id="simulation-controls" className="app-section">
               <h3>Votre tour :</h3>
-              <SimulationControls onToggleListening={toggleListening} isListening={isListening} disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking} />
-              {isAiResponding && !isAiSpeaking && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
-              {isAiSpeaking && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'purple'}}>🔊 L'IA parle...</p>}
+              <SimulationControls onToggleListening={toggleListening} isListening={isListening} disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} /> {/* Désactiver pendant l'analyse aussi */}
+              {isAiResponding && !isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
+              {isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'purple'}}>🔊 L'IA parle...</p>}
+              {isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'blue'}}>📊 Analyse en cours...</p>} {/* Indicateur d'analyse */}
             </section>
             <section id="conversation-display" className="app-section">
               <h3>Conversation :</h3>
               <ConversationView messages={conversation} interimTranscript={interimTranscript} onPlayAiAudio={playAiAudioCb} isMobile={IS_MOBILE_DEVICE} />
             </section>
-            <button onClick={handleEndSimulation} style={{marginTop: '20px', backgroundColor: '#dc3545'}}>Terminer & Voir Résultats</button>
+            <button onClick={handleEndSimulation} style={{marginTop: '20px', backgroundColor: '#dc3545'}} disabled={isAiResponding || isAiSpeaking || isAnalyzing}>Terminer & Voir Résultats</button> {/* Désactiver pendant les processus IA */}
           </>
         )}
         {currentStep === 'results' && (
           <section id="results-display" className="app-section">
             <h2>Étape 3: Résultats</h2>
             {selectedScenario && <p>Scénario: {selectedScenario.title}</p>}
-            <ResultsView conversation={conversation} /> 
-            <button onClick={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); }}>Nouvelle simulation</button>
+            {isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center'}}>📊 Analyse en cours...</p>} {/* Indicateur d'analyse sur la page de résultats si on arrive ici pendant l'analyse */}
+            {!isAnalyzing && analysisResults && (
+              <>
+                <h4>Score Global :</h4>
+                <p>{analysisResults.score !== undefined ? analysisResults.score : '(Score non disponible)'}</p>
+                <h4>Conseils personnalisés :</h4>
+                <ul>
+                  {analysisResults.conseils && analysisResults.conseils.length > 0 ? analysisResults.conseils.map((item: string, index: number) => <li key={index}>{item}</li>) : <li>(Aucun conseil)</li>}
+                </ul>
+                <h4>Points à améliorer :</h4>
+                <ul>
+                  {analysisResults.ameliorations && analysisResults.ameliorations.length > 0 ? analysisResults.ameliorations.map((item: string, index: number) => <li key={index}>{item}</li>) : <li>(Aucun point spécifique)</li>}
+                </ul>
+              </>
+            )}
+            {!isAnalyzing && !analysisResults && !apiError && <p className="placeholder-text" style={{textAlign: 'center'}}>(Aucun résultat d'analyse disponible)</p>} {/* Message si pas de résultats et pas d'erreur */}
+            <button onClick={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}>Nouvelle simulation</button> {/* Réinitialiser les états */}
           </section>
         )}
       </main>
