@@ -168,7 +168,7 @@ app.post('/api/analyze', async (req, res) => {
     try {
       // Gemini peut parfois inclure le JSON dans des blocs de code markdown ```json ... ```
       const jsonMatch = analysisText.match(/```json\n([\s\S]*?)\n```/);
-      if (jsonMatch && jsonMatch[1]) {
+      if (jsonMatch && json[1]) { // Correction: jsonMatch[1] au lieu de json[1]
         analysisResults = JSON.parse(jsonMatch[1]);
       } else {
         // Si pas de bloc de code, essayer de parser directement
