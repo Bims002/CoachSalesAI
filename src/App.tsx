@@ -27,7 +27,7 @@ export interface Message {
 }
 
 const IS_MOBILE_DEVICE = /Mobi|Android/i.test(navigator.userAgent);
-const MAX_HISTORY_MESSAGES = 4; // Réduit à 4 messages (2 tours) pour tester
+const MAX_HISTORY_MESSAGES = 2; // Réduit à 2 messages (1 tour) pour tester
 
 function App() {
   type AppStep = 'scenarioSelection' | 'simulation' | 'results';
@@ -41,7 +41,7 @@ function App() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null);
   const [analysisResults, setAnalysisResults] = useState<any | null>(null); // Nouvel état pour les résultats d'analyse
-  const [isAnalyzing, setIsAnalyzing] = useState(false); // Nouvel état pour l'indicateur d'analyse
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleSpeechResultCb = useCallback((finalTranscript: string) => {
     const trimmedTranscript = finalTranscript.trim();

@@ -3,8 +3,8 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { TextToSpeechClient } = require('@google-cloud/text-to-speech'); // Ajout du client TTS
 const app = express();
 
-// Middleware pour parser le JSON dans les requêtes
-app.use(express.json());
+// Middleware pour parser le JSON dans les requêtes (avec une limite de taille augmentée)
+app.use(express.json({ limit: '5mb' })); // Augmenter la limite à 5MB
 
 // Initialisation des clients API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
