@@ -4,6 +4,7 @@ import ScenarioSelection from './components/ScenarioSelection';
 import SimulationControls from './components/SimulationControls';
 import ConversationView from './components/ConversationView';
 import ResultsView from './components/ResultsView';
+import HotjarTracking from './components/HotjarTracking';
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 
 export interface Scenario {
@@ -209,64 +210,67 @@ function App() {
   }, [browserSupportsSpeechRecognition, speechError]);
 
   return (
-    <div className="app-container">
-      {apiError && <p style={{color: 'orange', textAlign: 'center'}}>Erreur API: {apiError}</p>}
-      {speechError && <p style={{color: 'red', textAlign: 'center'}}>{speechError}</p>}
-      {IS_MOBILE_DEVICE && currentStep === 'simulation' && !isAnalyzing && <p style={{textAlign: 'center', padding: '10px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px'}}>Note: Sur mobile, cliquez sur ▶️ à côté du message de l'IA pour l'entendre.</p>}
-      <header><h1>CoachSales AI</h1></header>
-      <main>
-        {currentStep === 'scenarioSelection' && (
-          <section id="scenario-selection" className="app-section">
-            <h2>Étape 1: Choisir un scénario</h2>
-            <ScenarioSelection scenarios={scenarios} selectedScenario={selectedScenario} onSelectScenario={handleSelectScenario} />
-          </section>
-        )}
-        {currentStep === 'simulation' && selectedScenario && (
-          <>
-            <section id="simulation-info" className="app-section">
-              <h2>Simulation: {selectedScenario.title}</h2>
-              <p className="placeholder-text">{selectedScenario.description}</p>
+    <>
+      <HotjarTracking />
+      <div className="app-container">
+        {apiError && <p style={{color: 'orange', textAlign: 'center'}}>Erreur API: {apiError}</p>}
+        {speechError && <p style={{color: 'red', textAlign: 'center'}}>{speechError}</p>}
+        {IS_MOBILE_DEVICE && currentStep === 'simulation' && !isAnalyzing && <p style={{textAlign: 'center', padding: '10px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px'}}>Note: Sur mobile, cliquez sur ▶️ à côté du message de l'IA pour l'entendre.</p>}
+        <header><h1>CoachSales AI</h1></header>
+        <main>
+          {currentStep === 'scenarioSelection' && (
+            <section id="scenario-selection" className="app-section">
+              <h2>Étape 1: Choisir un scénario</h2>
+              <ScenarioSelection scenarios={scenarios} selectedScenario={selectedScenario} onSelectScenario={handleSelectScenario} />
             </section>
-            <section id="simulation-controls" className="app-section">
-              <h3>Votre tour :</h3>
-              <SimulationControls onToggleListening={toggleListening} isListening={isListening} disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} /> {/* Désactiver pendant l'analyse aussi */}
-              {isAiResponding && !isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
-              {isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'purple'}}>🔊 L'IA parle...</p>}
-              {isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'blue'}}>📊 Analyse en cours...</p>} {/* Indicateur d'analyse */}
+          )}
+          {currentStep === 'simulation' && selectedScenario && (
+            <>
+              <section id="simulation-info" className="app-section">
+                <h2>Simulation: {selectedScenario.title}</h2>
+                <p className="placeholder-text">{selectedScenario.description}</p>
+              </section>
+              <section id="simulation-controls" className="app-section">
+                <h3>Votre tour :</h3>
+                <SimulationControls onToggleListening={toggleListening} isListening={isListening} disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} /> {/* Désactiver pendant l'analyse aussi */}
+                {isAiResponding && !isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
+                {isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'purple'}}>🔊 L'IA parle...</p>}
+                {isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'blue'}}>📊 Analyse en cours...</p>} {/* Indicateur d'analyse */}
+              </section>
+              <section id="conversation-display" className="app-section">
+                <h3>Conversation :</h3>
+                <ConversationView messages={conversation} interimTranscript={interimTranscript} onPlayAiAudio={playAiAudioCb} isMobile={IS_MOBILE_DEVICE} />
+              </section>
+              <button onClick={handleEndSimulation} style={{marginTop: '20px', backgroundColor: '#dc3545'}} disabled={isAiResponding || isAiSpeaking || isAnalyzing}>Terminer & Voir Résultats</button> {/* Désactiver pendant les processus IA */}
+            </>
+          )}
+          {currentStep === 'results' && (
+            <section id="results-display" className="app-section">
+              <h2>Étape 3: Résultats</h2>
+              {selectedScenario && <p>Scénario: {selectedScenario.title}</p>}
+              {isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center'}}>📊 Analyse en cours...</p>} {/* Indicateur d'analyse sur la page de résultats si on arrive ici pendant l'analyse */}
+              {!isAnalyzing && analysisResults && (
+                <>
+                  <h4>Score Global :</h4>
+                  <p>{analysisResults.score !== undefined ? analysisResults.score : '(Score non disponible)'}</p>
+                  <h4>Conseils personnalisés :</h4>
+                  <ul>
+                    {analysisResults.conseils && analysisResults.conseils.length > 0 ? analysisResults.conseils.map((item: string, index: number) => <li key={index}>{item}</li>) : <li>(Aucun conseil)</li>}
+                  </ul>
+                  <h4>Points à améliorer :</h4>
+                  <ul>
+                    {analysisResults.ameliorations && analysisResults.ameliorations.length > 0 ? analysisResults.ameliorations.map((item: string, index: number) => <li key={index}>{item}</li>) : <li>(Aucun point spécifique)</li>}
+                  </ul>
+                </>
+              )}
+              {!isAnalyzing && !analysisResults && !apiError && <p className="placeholder-text" style={{textAlign: 'center'}}>(Aucun résultat d'analyse disponible)</p>} {/* Message si pas de résultats et pas d'erreur */}
+              <button onClick={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}>Nouvelle simulation</button> {/* Réinitialiser les états */}
             </section>
-            <section id="conversation-display" className="app-section">
-              <h3>Conversation :</h3>
-              <ConversationView messages={conversation} interimTranscript={interimTranscript} onPlayAiAudio={playAiAudioCb} isMobile={IS_MOBILE_DEVICE} />
-            </section>
-            <button onClick={handleEndSimulation} style={{marginTop: '20px', backgroundColor: '#dc3545'}} disabled={isAiResponding || isAiSpeaking || isAnalyzing}>Terminer & Voir Résultats</button> {/* Désactiver pendant les processus IA */}
-          </>
-        )}
-        {currentStep === 'results' && (
-          <section id="results-display" className="app-section">
-            <h2>Étape 3: Résultats</h2>
-            {selectedScenario && <p>Scénario: {selectedScenario.title}</p>}
-            {isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center'}}>📊 Analyse en cours...</p>} {/* Indicateur d'analyse sur la page de résultats si on arrive ici pendant l'analyse */}
-            {!isAnalyzing && analysisResults && (
-              <>
-                <h4>Score Global :</h4>
-                <p>{analysisResults.score !== undefined ? analysisResults.score : '(Score non disponible)'}</p>
-                <h4>Conseils personnalisés :</h4>
-                <ul>
-                  {analysisResults.conseils && analysisResults.conseils.length > 0 ? analysisResults.conseils.map((item: string, index: number) => <li key={index}>{item}</li>) : <li>(Aucun conseil)</li>}
-                </ul>
-                <h4>Points à améliorer :</h4>
-                <ul>
-                  {analysisResults.ameliorations && analysisResults.ameliorations.length > 0 ? analysisResults.ameliorations.map((item: string, index: number) => <li key={index}>{item}</li>) : <li>(Aucun point spécifique)</li>}
-                </ul>
-              </>
-            )}
-            {!isAnalyzing && !analysisResults && !apiError && <p className="placeholder-text" style={{textAlign: 'center'}}>(Aucun résultat d'analyse disponible)</p>} {/* Message si pas de résultats et pas d'erreur */}
-            <button onClick={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}>Nouvelle simulation</button> {/* Réinitialiser les états */}
-          </section>
-        )}
-      </main>
-      <footer><p>&copy; {new Date().getFullYear()} CoachSales AI</p></footer>
-    </div>
+          )}
+        </main>
+        <footer><p>&copy; {new Date().getFullYear()} CoachSales AI</p></footer>
+      </div>
+    </>
   );
 }
 export default App;
