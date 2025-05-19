@@ -247,11 +247,11 @@ function App() {
   return (
     <>
       <HotjarTracking />
+      <Navbar />
       <div className="app-container">
         {apiError && <p style={{color: 'orange', textAlign: 'center'}}>Erreur API: {apiError}</p>}
         {speechError && <p style={{color: 'red', textAlign: 'center'}}>{speechError}</p>}
         {IS_MOBILE_DEVICE && currentStep === 'simulation' && !isAnalyzing && <p style={{textAlign: 'center', padding: '10px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px'}}>Note: Sur mobile, cliquez sur ▶️ à côté du message de l'IA pour l'entendre.</p>}
-        <header><h1>CoachSales AI</h1></header>
         <main>
           {currentStep === 'scenarioSelection' && (
             <section id="scenario-selection" className="app-section">
@@ -330,3 +330,5 @@ function App() {
     </>
   );
 }
+
+export default App;
