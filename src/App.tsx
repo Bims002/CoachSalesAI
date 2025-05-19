@@ -7,6 +7,7 @@ import ResultsView from './components/ResultsView';
 import HotjarTracking from './components/HotjarTracking';
 import HistoryView from './components/HistoryView';
 import type { SimulationRecord } from './components/HistoryView';
+import Navbar from './components/Navbar';
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 
 export interface Scenario {
@@ -308,10 +309,24 @@ function App() {
               <button onClick={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}>Nouvelle simulation</button> {/* Réinitialiser les états */}
             </section>
           )}
+          {currentStep === 'history' && (
+            <section id="history-display" className="app-section">
+              <h2>Historique des simulations</h2>
+              <HistoryView history={history} onSelectRecord={(record) => {
+                setSelectedScenario(scenarios.find(s => s.title === record.scenarioTitle) ?? null);
+                setAnalysisResults({
+                  score: record.score,
+                  conseils: [],
+                  ameliorations: record.summary ? record.summary.split(', ') : [],
+                });
+                setCurrentStep('results');
+              }} />
+              <button onClick={() => setCurrentStep('scenarioSelection')} style={{marginTop: '20px'}}>Retour à la sélection</button>
+            </section>
+          )}
         </main>
         <footer><p>&copy; {new Date().getFullYear()} CoachSales AI</p></footer>
       </div>
     </>
   );
 }
-export default App;
