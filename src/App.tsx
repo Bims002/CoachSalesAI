@@ -5,6 +5,8 @@ import SimulationControls from './components/SimulationControls';
 import ConversationView from './components/ConversationView';
 import ResultsView from './components/ResultsView';
 import HotjarTracking from './components/HotjarTracking';
+import HistoryView from './components/HistoryView';
+import type { SimulationRecord } from './components/HistoryView';
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 
 export interface Scenario {
@@ -31,7 +33,7 @@ const IS_MOBILE_DEVICE = /Mobi|Android/i.test(navigator.userAgent);
 const MAX_HISTORY_MESSAGES = 2; // Réduit à 2 messages (1 tour) pour tester
 
 function App() {
-  type AppStep = 'scenarioSelection' | 'simulation' | 'results';
+  type AppStep = 'scenarioSelection' | 'simulation' | 'results' | 'history';
 
   const [currentStep, setCurrentStep] = useState<AppStep>('scenarioSelection');
   const [scenarios] = useState<Scenario[]>(scenariosData);
@@ -43,6 +45,38 @@ function App() {
   const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null);
   const [analysisResults, setAnalysisResults] = useState<any | null>(null); // Nouvel état pour les résultats d'analyse
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Nouvel état pour l'historique des simulations
+  const [history, setHistory] = useState<SimulationRecord[]>([]);
+
+  // Charger l'historique depuis localStorage au montage
+  useEffect(() => {
+    const storedHistory = localStorage.getItem('coachSalesHistory');
+    if (storedHistory) {
+      setHistory(JSON.parse(storedHistory));
+    }
+  }, []);
+  
+  // Fonction pour ajouter une simulation à l'historique
+  const addToHistory = (record: SimulationRecord) => {
+    const newHistory = [record, ...history].slice(0, 20); // Garder max 20 enregistrements
+    setHistory(newHistory);
+    localStorage.setItem('coachSalesHistory', JSON.stringify(newHistory));
+  };
+  
+  // Mettre à jour l'historique après analyse réussie
+  useEffect(() => {
+    if (analysisResults && selectedScenario) {
+      const record: SimulationRecord = {
+        id: Date.now().toString(),
+        date: new Date().toLocaleString(),
+        scenarioTitle: selectedScenario.title,
+        score: analysisResults.score ?? null,
+        summary: analysisResults.ameliorations?.join(', ') ?? '',
+      };
+      addToHistory(record);
+    }
+  }, [analysisResults, selectedScenario]);
 
   const handleSpeechResultCb = useCallback((finalTranscript: string) => {
     const trimmedTranscript = finalTranscript.trim();
@@ -232,7 +266,14 @@ function App() {
               </section>
               <section id="simulation-controls" className="app-section">
                 <h3>Votre tour :</h3>
-                <SimulationControls onToggleListening={toggleListening} isListening={isListening} disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} /> {/* Désactiver pendant l'analyse aussi */}
+                <SimulationControls 
+                onStartListening={startListening} 
+                onPauseListening={stopListening} 
+                onStopListening={stopListening} 
+                isListening={isListening} 
+                isPaused={false} 
+                disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} 
+              /> {/* Désactiver pendant l'analyse aussi */}
                 {isAiResponding && !isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
                 {isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'purple'}}>🔊 L'IA parle...</p>}
                 {isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'blue'}}>📊 Analyse en cours...</p>} {/* Indicateur d'analyse */}
