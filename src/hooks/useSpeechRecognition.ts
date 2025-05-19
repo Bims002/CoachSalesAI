@@ -98,7 +98,9 @@ const useSpeechRecognition = (options: UseSpeechRecognitionOptions = {}) => {
         console.log("Reconnaissance terminée inopinément, tentative de redémarrage...");
         if (recognitionRef.current) {
           try {
-            recognitionRef.current.start();
+            setTimeout(() => {
+              recognitionRef.current?.start();
+            }, 500); // délai de 500ms pour éviter InvalidStateError
             // Ne pas changer isListening ici; start() devrait le faire via onstart implicitement
             // ou si start() échoue, onerror mettra isListening à false.
           } catch (e) {
