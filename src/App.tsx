@@ -122,7 +122,7 @@ function App() {
       setIsAiResponding(false);
       setIsAiSpeaking(false);
     }
-  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, stopListening, setIsAiSpeaking, setConversation, setIsAiResponding, setApiError]); // Dépendances mises à jour
+  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, stopListening, setIsAiSpeaking, setConversation, setIsAiResponding, setApiError]);
 
   // Fonction pour lancer l'analyse de la conversation
   const runAnalysis = useCallback(async () => {
@@ -168,7 +168,7 @@ function App() {
       setAnalysisResults(null); // S'assurer que les anciens résultats sont effacés
       setCurrentStep('results'); // Passer quand même aux résultats pour afficher l'erreur
     }
-  }, [conversation, setAnalysisResults, setCurrentStep, setIsAnalyzing, setApiError]); // Dépendances
+  }, [conversation, setAnalysisResults, setCurrentStep, setIsAnalyzing, setApiError]);
 
   useEffect(() => {
     if (conversation.length > 0) {
@@ -178,7 +178,7 @@ function App() {
         getAiResponseCb(lastMessage.text, conversation);
       }
     }
-  }, [conversation, isAiResponding, isAiSpeaking, isAnalyzing, getAiResponseCb, lastProcessedUserMessageId, setLastProcessedUserMessageId]); // Dépendances mises à jour
+  }, [conversation, isAiResponding, isAiSpeaking, isAnalyzing, getAiResponseCb, lastProcessedUserMessageId, setLastProcessedUserMessageId]);
 
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
