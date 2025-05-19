@@ -28,9 +28,9 @@ const ResultsView: React.FC<ResultsViewProps> = ({ conversation, score, conseils
         </div>
       </div>
 
-      <div style={{ marginTop: '20px' }}>
-        <h4>Score Global :</h4>
-        <p className="placeholder-text">{score !== undefined ? score : '(Score non disponible)'}</p>
+      <div style={{ marginTop: '20px', fontSize: '1.5em', fontWeight: 'bold', color: '#007bff' }}>
+        <h4>Score Global (sur 100) :</h4>
+        <p>{score !== undefined ? `${score} / 100` : '(Score non disponible)'}</p>
       </div>
       <div style={{ marginTop: '20px' }}>
         <h4>Conseils personnalisés :</h4>
