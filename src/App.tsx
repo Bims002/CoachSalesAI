@@ -9,9 +9,11 @@ import HistoryView from './components/HistoryView';
 import type { SimulationRecord } from './components/HistoryView';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
-import AuthForm from './components/AuthForm'; // Importer AuthForm
-import { useAuth } from './contexts/AuthContext'; // Importer useAuth
+import AuthForm from './components/AuthForm';
+import { useAuth } from './contexts/AuthContext';
 import useSpeechRecognition from './hooks/useSpeechRecognition';
+import { db } from './firebase-config'; // Importer db de firebase-config
+import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 export interface Scenario {
   id: string;
@@ -54,34 +56,86 @@ function App() {
   // Nouvel état pour l'historique des simulations
   const [history, setHistory] = useState<SimulationRecord[]>([]);
 
-  // Charger l'historique depuis localStorage au montage
+  // Charger l'historique depuis Firestore ou localStorage
   useEffect(() => {
-    const storedHistory = localStorage.getItem('coachSalesHistory');
-    if (storedHistory) {
-      setHistory(JSON.parse(storedHistory));
-    }
-  }, []);
+    const fetchHistory = async () => {
+      if (currentUser) {
+        try {
+          const userHistoryCollection = collection(db, `users/${currentUser.uid}/simulations`);
+          const q = query(userHistoryCollection, orderBy('date', 'desc'), limit(20));
+          const querySnapshot = await getDocs(q);
+          const firestoreHistory: SimulationRecord[] = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            firestoreHistory.push({ 
+              id: doc.id, 
+              // Assurer la conversion correcte de Timestamp en string si nécessaire
+              date: data.date instanceof Timestamp ? data.date.toDate().toLocaleString() : new Date(data.date).toLocaleString(), 
+              scenarioTitle: data.scenarioTitle,
+              score: data.score,
+              summary: data.summary
+            });
+          });
+          setHistory(firestoreHistory);
+        } catch (error) {
+          console.error("Erreur lors de la récupération de l'historique Firestore:", error);
+          // Fallback ou gestion d'erreur
+        }
+      } else {
+        // Pour les utilisateurs non connectés, on pourrait utiliser localStorage ou ne rien charger
+        const storedHistory = localStorage.getItem('coachSalesLocalHistory');
+        if (storedHistory) {
+          setHistory(JSON.parse(storedHistory));
+        } else {
+          setHistory([]);
+        }
+      }
+    };
+    fetchHistory();
+  }, [currentUser]); // Re-fetch si l'utilisateur change
   
-  // Fonction pour ajouter une simulation à l'historique
-  const addToHistory = (record: SimulationRecord) => {
-    const newHistory = [record, ...history].slice(0, 20); // Garder max 20 enregistrements
-    setHistory(newHistory);
-    localStorage.setItem('coachSalesHistory', JSON.stringify(newHistory));
+  // Fonction pour ajouter une simulation à l'historique (Firestore ou localStorage)
+  const addToHistory = async (recordData: Omit<SimulationRecord, 'id' | 'date'>) => {
+    const newRecord: SimulationRecord = {
+      ...recordData,
+      id: Date.now().toString(), // ID temporaire, Firestore générera le sien
+      date: new Date().toLocaleString(), // Date en string pour la simplicité, Firestore utilisera serverTimestamp
+    };
+
+    if (currentUser) {
+      try {
+        const userHistoryCollection = collection(db, `users/${currentUser.uid}/simulations`);
+        // Utiliser serverTimestamp pour la date pour un tri correct côté serveur
+        await addDoc(userHistoryCollection, { ...recordData, date: serverTimestamp() });
+        // Re-fetch l'historique pour mettre à jour l'UI avec l'enregistrement de Firestore (incluant l'ID et la date serveur)
+        // Ou ajouter localement et espérer la synchro, mais re-fetch est plus sûr pour l'ID et la date.
+        // Pour l'instant, on ajoute localement pour la réactivité, puis on re-fetch au prochain chargement.
+        setHistory(prevHistory => [newRecord, ...prevHistory].slice(0, 20));
+
+      } catch (error) {
+        console.error("Erreur lors de l'ajout à l'historique Firestore:", error);
+      }
+    } else {
+      // Logique localStorage pour utilisateurs non connectés
+      setHistory(prevHistory => {
+        const updatedHistory = [newRecord, ...prevHistory].slice(0, 20);
+        localStorage.setItem('coachSalesLocalHistory', JSON.stringify(updatedHistory));
+        return updatedHistory;
+      });
+    }
   };
   
   // Mettre à jour l'historique après analyse réussie
   useEffect(() => {
     if (analysisResults && selectedScenario) {
-      const record: SimulationRecord = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleString(),
+      const recordData: Omit<SimulationRecord, 'id' | 'date'> = {
         scenarioTitle: selectedScenario.title,
         score: analysisResults.score ?? null,
-        summary: analysisResults.ameliorations?.join(', ') ?? '',
+        summary: analysisResults.ameliorations?.join(', ') ?? 'Aucun point spécifique',
       };
-      addToHistory(record);
+      addToHistory(recordData);
     }
-  }, [analysisResults, selectedScenario]);
+  }, [analysisResults, selectedScenario, currentUser]); // Ajouter currentUser aux dépendances
 
   const handleSpeechResultCb = useCallback((finalTranscript: string) => {
     const trimmedTranscript = finalTranscript.trim();

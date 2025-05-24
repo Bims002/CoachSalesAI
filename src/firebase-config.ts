@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-// import { getFirestore } from "firebase/firestore"; // Décommenter si vous utilisez Firestore
+import { getFirestore } from "firebase/firestore"; 
 
 // Votre configuration Firebase (remplacez par vos propres clés)
 const firebaseConfig = {
@@ -18,6 +18,6 @@ const app = initializeApp(firebaseConfig);
 
 // Initialiser les services Firebase
 const auth = getAuth(app);
-// const db = getFirestore(app); // Décommenter si vous utilisez Firestore
+const db = getFirestore(app); 
 
-export { auth /*, db*/ }; // Exporter db si vous l'utilisez
+export { auth, db };
