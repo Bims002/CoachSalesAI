@@ -8,7 +8,9 @@ import HotjarTracking from './components/HotjarTracking';
 import HistoryView from './components/HistoryView';
 import type { SimulationRecord } from './components/HistoryView';
 import Navbar from './components/Navbar';
-import Dashboard from './components/Dashboard'; // Importer le Dashboard
+import Dashboard from './components/Dashboard';
+import AuthForm from './components/AuthForm'; // Importer AuthForm
+import { useAuth } from './contexts/AuthContext'; // Importer useAuth
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 
 export interface Scenario {
@@ -35,9 +37,10 @@ const IS_MOBILE_DEVICE = /Mobi|Android/i.test(navigator.userAgent);
 const MAX_HISTORY_MESSAGES = 2; // Réduit à 2 messages (1 tour) pour tester
 
 function App() {
-  type AppStep = 'scenarioSelection' | 'simulation' | 'results' | 'history' | 'dashboard'; // Ajouter 'dashboard'
+  type AppStep = 'scenarioSelection' | 'simulation' | 'results' | 'history' | 'dashboard' | 'auth'; // Ajouter 'auth'
 
-  const [currentStep, setCurrentStep] = useState<AppStep>('scenarioSelection');
+  const { currentUser } = useAuth(); // Utiliser le hook useAuth
+  const [currentStep, setCurrentStep] = useState<AppStep>(currentUser ? 'scenarioSelection' : 'auth');
   const [scenarios] = useState<Scenario[]>(scenariosData);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [conversation, setConversation] = useState<Message[]>([]);
@@ -245,6 +248,14 @@ function App() {
     }
   }, [browserSupportsSpeechRecognition, speechError]);
 
+  useEffect(() => {
+    if (currentUser && currentStep === 'auth') {
+      setCurrentStep('scenarioSelection');
+    } else if (!currentUser && currentStep !== 'auth') {
+      setCurrentStep('auth');
+    }
+  }, [currentUser, currentStep]);
+
   return (
     <>
       <HotjarTracking />
@@ -329,6 +340,11 @@ function App() {
             <section id="dashboard-display" className="app-section">
               <Dashboard history={history} />
               <button onClick={() => setCurrentStep('scenarioSelection')} style={{marginTop: '20px'}}>Retour à la sélection</button>
+            </section>
+          )}
+          {currentStep === 'auth' && (
+            <section id="auth-display" className="app-section">
+              <AuthForm />
             </section>
           )}
         </main>
