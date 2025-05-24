@@ -1,6 +1,10 @@
 import React from 'react';
 
-const Navbar: React.FC = () => {
+interface NavbarProps {
+  onNavigate: (step: 'scenarioSelection' | 'history' | 'dashboard') => void;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   return (
     <nav style={{
       display: 'flex',
@@ -17,7 +21,9 @@ const Navbar: React.FC = () => {
     }}>
       <div>CoachSales AI</div>
       <div>
-        {/* Placeholder for future menu items */}
+        <button onClick={() => onNavigate('scenarioSelection')} style={{ marginRight: '10px', fontSize: '1rem', padding: '8px 12px' }}>Nouvelle Simulation</button>
+        <button onClick={() => onNavigate('history')} style={{ marginRight: '10px', fontSize: '1rem', padding: '8px 12px' }}>Historique</button>
+        <button onClick={() => onNavigate('dashboard')} style={{ fontSize: '1rem', padding: '8px 12px' }}>Tableau de Bord</button>
       </div>
     </nav>
   );

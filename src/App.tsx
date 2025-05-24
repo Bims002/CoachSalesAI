@@ -8,6 +8,7 @@ import HotjarTracking from './components/HotjarTracking';
 import HistoryView from './components/HistoryView';
 import type { SimulationRecord } from './components/HistoryView';
 import Navbar from './components/Navbar';
+import Dashboard from './components/Dashboard'; // Importer le Dashboard
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 
 export interface Scenario {
@@ -34,7 +35,7 @@ const IS_MOBILE_DEVICE = /Mobi|Android/i.test(navigator.userAgent);
 const MAX_HISTORY_MESSAGES = 2; // Réduit à 2 messages (1 tour) pour tester
 
 function App() {
-  type AppStep = 'scenarioSelection' | 'simulation' | 'results' | 'history';
+  type AppStep = 'scenarioSelection' | 'simulation' | 'results' | 'history' | 'dashboard'; // Ajouter 'dashboard'
 
   const [currentStep, setCurrentStep] = useState<AppStep>('scenarioSelection');
   const [scenarios] = useState<Scenario[]>(scenariosData);
@@ -247,7 +248,7 @@ function App() {
   return (
     <>
       <HotjarTracking />
-      <Navbar />
+      <Navbar onNavigate={(step) => setCurrentStep(step)} />
       <div className="app-container">
         {apiError && <p style={{color: 'orange', textAlign: 'center'}}>Erreur API: {apiError}</p>}
         {speechError && <p style={{color: 'red', textAlign: 'center'}}>{speechError}</p>}
@@ -321,6 +322,12 @@ function App() {
                 });
                 setCurrentStep('results');
               }} />
+              <button onClick={() => setCurrentStep('scenarioSelection')} style={{marginTop: '20px'}}>Retour à la sélection</button>
+            </section>
+          )}
+          {currentStep === 'dashboard' && (
+            <section id="dashboard-display" className="app-section">
+              <Dashboard history={history} />
               <button onClick={() => setCurrentStep('scenarioSelection')} style={{marginTop: '20px'}}>Retour à la sélection</button>
             </section>
           )}
