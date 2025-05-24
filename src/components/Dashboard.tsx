@@ -67,8 +67,8 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
             <YAxis domain={[0, 100]} stroke="var(--color-text-secondary)" />
             <Tooltip 
               contentStyle={{ backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)'}} 
-              labelFormatter={(label) => `Simulation: ${label}`}
-              formatter={(value, name, props) => [`Score: ${value}`, `Date: ${props.payload.date}`]}
+              labelFormatter={(label: string) => `Simulation: ${label}`}
+              formatter={(value: number, name: string, props: any) => [`Score: ${value}`, `Date: ${props.payload.date}`]}
             />
             <Legend />
             <Line type="monotone" dataKey="score" stroke="var(--color-accent)" strokeWidth={2} activeDot={{ r: 8 }} name="Score" />
