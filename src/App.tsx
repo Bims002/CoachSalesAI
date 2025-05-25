@@ -378,13 +378,23 @@ function App() {
                 disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} 
               />
                 {isListening && !isAiResponding && !isAiSpeaking && !isAnalyzing && (
-                  <p className="placeholder-text" style={{ textAlign: 'center', marginTop: '15px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
-                    🎤 Pour de meilleurs résultats, parlez clairement dans un environnement calme et près de votre microphone.
+                  <p className="placeholder-text mic-icon-listening" style={{ textAlign: 'center', marginTop: '15px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+                    🎤 Écoute en cours... Parlez clairement dans un environnement calme et près de votre microphone.
                   </p>
                 )}
-                {isAiResponding && !isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px'}}>🤖 L'IA réfléchit...</p>}
+                {isAiResponding && !isAiSpeaking && !isAnalyzing && (
+                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                    <div className="loader-ia"></div>
+                    <p className="placeholder-text">🤖 L'IA réfléchit...</p>
+                  </div>
+                )}
                 {isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'var(--color-accent)'}}>🔊 L'IA parle...</p>}
-                {isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'var(--color-accent-hover)'}}>📊 Analyse en cours...</p>}
+                {isAnalyzing && (
+                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                    <div className="loader-ia"></div>
+                    <p className="placeholder-text" style={{color: 'var(--color-accent-hover)'}}>📊 Analyse en cours...</p>
+                  </div>
+                )}
               </section>
               <section id="conversation-display" className="app-section">
                 <h3>Conversation :</h3>
