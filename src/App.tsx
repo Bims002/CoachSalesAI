@@ -298,21 +298,33 @@ function App() {
 
   const handleSubmitContext = (context: string) => {
     setUserContext(context);
-    setConversation([]); // Réinitialiser la conversation pour une nouvelle simulation
-    setSimulationTime(0); // Réinitialiser le timer
+    setConversation([]); 
+    setSimulationTime(0); 
     setCurrentStep('simulation'); 
-    // Démarrer le timer
-    if (timerIntervalId) clearInterval(timerIntervalId); // Nettoyer l'ancien intervalle s'il existe
-    const newIntervalId = setInterval(() => {
-      setSimulationTime(prevTime => prevTime + 1);
-    }, 1000);
-    setTimerIntervalId(newIntervalId);
+    // Le timer ne démarre plus ici
+  };
+
+  const startSimulationTimer = () => {
+    if (!timerIntervalId && currentStep === 'simulation') { // Démarrer seulement si pas déjà démarré et si on est en simulation
+      const newIntervalId = setInterval(() => {
+        setSimulationTime(prevTime => prevTime + 1);
+      }, 1000);
+      setTimerIntervalId(newIntervalId);
+    }
+  };
+
+  const customStartListening = () => {
+    startListening(); // Fonction originale du hook
+    startSimulationTimer(); // Démarrer notre timer
   };
 
   const toggleListening = () => {
-    if (isAiSpeaking || isAnalyzing) return; // Ne rien faire si l'IA parle ou si l'analyse est en cours
-    if (isListening) stopListening();
-    else startListening();
+    if (isAiSpeaking || isAnalyzing) return; 
+    if (isListening) {
+      stopListening();
+    } else {
+      customStartListening(); // Utiliser notre fonction personnalisée
+    }
   };
 
   const handleEndSimulation = () => {
@@ -417,7 +429,7 @@ function App() {
               {/* Section des contrôles de simulation */}
               <div id="simulation-controls" className="app-section" style={{background: 'transparent', border: 'none', boxShadow: 'none', padding: 0}}>
                 <SimulationControls 
-                  onStartListening={startListening} 
+                  onStartListening={customStartListening} // Utiliser customStartListening
                   onStopListening={stopListening} 
                   isListening={isListening} 
                   disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} 
