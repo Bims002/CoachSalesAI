@@ -52,10 +52,11 @@ function App() {
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null);
-  const [analysisResults, setAnalysisResults] = useState<any | null>(null); // Nouvel état pour les résultats d'analyse
+  const [analysisResults, setAnalysisResults] = useState<any | null>(null); 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [simulationTime, setSimulationTime] = useState(0); // État pour le timer
+  const [timerIntervalId, setTimerIntervalId] = useState<NodeJS.Timeout | null>(null); // Pour stocker l'ID de l'intervalle
 
-  // Nouvel état pour l'historique des simulations
   const [history, setHistory] = useState<SimulationRecord[]>([]);
 
   // Charger l'historique depuis Firestore ou localStorage
@@ -297,7 +298,15 @@ function App() {
 
   const handleSubmitContext = (context: string) => {
     setUserContext(context);
-    setCurrentStep('simulation'); // Démarrer la simulation après la saisie du contexte
+    setConversation([]); // Réinitialiser la conversation pour une nouvelle simulation
+    setSimulationTime(0); // Réinitialiser le timer
+    setCurrentStep('simulation'); 
+    // Démarrer le timer
+    if (timerIntervalId) clearInterval(timerIntervalId); // Nettoyer l'ancien intervalle s'il existe
+    const newIntervalId = setInterval(() => {
+      setSimulationTime(prevTime => prevTime + 1);
+    }, 1000);
+    setTimerIntervalId(newIntervalId);
   };
 
   const toggleListening = () => {
@@ -308,10 +317,22 @@ function App() {
 
   const handleEndSimulation = () => {
     if (isListening) stopListening();
-    // Ne pas changer d'étape ici, runAnalysis le fera après avoir obtenu les résultats
+    if (timerIntervalId) {
+      clearInterval(timerIntervalId); // Arrêter le timer
+      setTimerIntervalId(null);
+    }
     runAnalysis(); 
   };
   
+  // Nettoyer l'intervalle du timer lorsque le composant est démonté ou lorsque la simulation n'est plus l'étape active
+  useEffect(() => {
+    return () => {
+      if (timerIntervalId) {
+        clearInterval(timerIntervalId);
+      }
+    };
+  }, [timerIntervalId]);
+
   useEffect(() => {
     if (!browserSupportsSpeechRecognition && !speechError) {
       alert("La reconnaissance vocale n'est pas supportée.");
@@ -366,45 +387,59 @@ function App() {
             <ContextInput onSubmitContext={handleSubmitContext} selectedScenarioTitle={selectedScenario.title} />
           )}
           {currentStep === 'simulation' && selectedScenario && userContext && (
-            <>
-              <section id="simulation-info" className="app-section">
-                <h2>Simulation: {selectedScenario.title}</h2>
-                <p style={{ fontStyle: 'italic', color: 'var(--color-text-secondary)', marginBottom: '10px', borderLeft: `4px solid var(--color-accent)`, paddingLeft: '10px' }}>Contexte: {userContext}</p>
-                <p className="placeholder-text">{selectedScenario.description}</p>
-              </section>
-              <section id="simulation-controls" className="app-section">
-                <h3>Votre tour :</h3>
+            <div className="simulation-interface app-section"> {/* Utiliser app-section pour le style de fond/bordure global */}
+              <div className="simulation-panels-container">
+                {/* Panneau IA */}
+                <div className="simulation-panel">
+                  <img src="/assets/ai_avatar.png" alt="Client IA" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=IA')} />
+                  <h4>{selectedScenario.title}</h4>
+                  <div className="last-message">
+                    {isAiSpeaking && <span style={{fontSize: '2em', animation: 'pulse 1.5s infinite ease-in-out'}}>🔊</span>}
+                    {!isAiSpeaking && conversation.filter(m => m.sender === 'ai').slice(-1)[0]?.text || "En attente de votre réponse..."}
+                  </div>
+                  {isAiResponding && !isAiSpeaking && <div className="loader-ia" style={{marginTop: '10px'}}></div>}
+                </div>
+                {/* Panneau Utilisateur */}
+                <div className="simulation-panel">
+                  <img src={currentUser?.photoURL || "/assets/user_avatar.png"} alt="Vous" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=Vous')}/>
+                  <h4>Vous {currentUser?.displayName ? `(${currentUser.displayName})` : ''}</h4>
+                  <div className="last-message">
+                    {isListening && <span style={{fontSize: '2em'}} className="mic-icon-listening">🎤</span>}
+                    {!isListening && conversation.filter(m => m.sender === 'user').slice(-1)[0]?.text || "Prêt à parler..."}
+                  </div>
+                </div>
+              </div>
+
+              <div className="simulation-timer">
+                {Math.floor(simulationTime / 60).toString().padStart(2, '0')}:{(simulationTime % 60).toString().padStart(2, '0')}
+              </div>
+
+              {/* Section des contrôles de simulation */}
+              <div id="simulation-controls" className="app-section" style={{background: 'transparent', border: 'none', boxShadow: 'none', padding: 0}}>
                 <SimulationControls 
                   onStartListening={startListening} 
                   onStopListening={stopListening} 
                   isListening={isListening} 
                   disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} 
                 />
-                {isListening && !isAiResponding && !isAiSpeaking && !isAnalyzing && (
-                  <p className="placeholder-text mic-icon-listening" style={{ textAlign: 'center', marginTop: '15px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
-                    🎤 Écoute en cours... Parlez clairement dans un environnement calme et près de votre microphone.
+                 {isListening && !isAiResponding && !isAiSpeaking && !isAnalyzing && (
+                  <p className="placeholder-text" style={{ textAlign: 'center', marginTop: '15px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+                    Parlez clairement dans un environnement calme...
                   </p>
                 )}
-                {isAiResponding && !isAiSpeaking && !isAnalyzing && (
-                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                    <div className="loader-ia"></div>
-                    <p className="placeholder-text">🤖 L'IA réfléchit...</p>
-                  </div>
-                )}
-                {isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'var(--color-accent)'}}>🔊 L'IA parle...</p>}
-                {isAnalyzing && (
+              </div>
+              
+              {/* Bouton Terminer la simulation */}
+              <button onClick={handleEndSimulation} style={{marginTop: '30px', backgroundColor: '#dc3545', width: 'auto', padding: '10px 20px'}} disabled={isAiResponding || isAiSpeaking || isAnalyzing}>
+                Terminer & Voir Résultats
+              </button>
+              {isAnalyzing && (
                   <div style={{ textAlign: 'center', marginTop: '10px' }}>
                     <div className="loader-ia"></div>
                     <p className="placeholder-text" style={{color: 'var(--color-accent-hover)'}}>📊 Analyse en cours...</p>
                   </div>
-                )}
-              </section>
-              <section id="conversation-display" className="app-section">
-                <h3>Conversation :</h3>
-                <ConversationView messages={conversation} interimTranscript={interimTranscript} onPlayAiAudio={playAiAudioCb} isMobile={IS_MOBILE_DEVICE} />
-              </section>
-              <button onClick={handleEndSimulation} style={{marginTop: '20px', backgroundColor: '#dc3545'}} disabled={isAiResponding || isAiSpeaking || isAnalyzing}>Terminer & Voir Résultats</button> {/* Désactiver pendant les processus IA */}
-            </>
+              )}
+            </div>
           )}
           {currentStep === 'results' && (
             <ResultsView 

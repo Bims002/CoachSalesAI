@@ -385,11 +385,10 @@ ul {
     font-size: 1.3rem;
   }
   button { /* Les boutons dans les sections prendront 100% de largeur */
-    /* width: 100%; */ /* Commenté car déjà appliqué globalement, mais peut être réactivé si besoin spécifique */
-    /* padding: 14px 0; */ /* Idem */
-    font-size: 1.1rem; /* Ajuster la taille de police des boutons */
+    /* width: 100%; */ 
+    /* padding: 14px 0; */ 
+    font-size: 1.1rem; 
   }
-  /* S'assurer que les boutons dans la navbar mobile ne prennent pas 100% de largeur */
   .mobile-menu-dropdown button, .sidebar button {
       width: 100% !important; /* Forcer la largeur pour les liens du menu */
   }
@@ -399,6 +398,85 @@ ul {
   }
 
   .messages-list {
-    max-height: 280px; /* Ajuster la hauteur pour mobile */
+    max-height: 280px; 
   }
+
+  .simulation-panels-container {
+    flex-direction: column;
+  }
+  .simulation-panel {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+}
+
+/* Styles pour la nouvelle interface de simulation */
+.simulation-interface {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.simulation-panels-container {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.simulation-panel {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 20px;
+  width: 45%; /* Chaque panneau prend un peu moins de la moitié */
+  min-height: 250px; /* Hauteur minimale pour le contenu */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.simulation-panel img.avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 15px;
+  border: 3px solid var(--color-accent);
+}
+
+.simulation-panel h4 { /* Nom du personnage (IA ou Vous) */
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.3rem;
+  color: var(--color-text-primary);
+}
+
+.simulation-panel .last-message {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  min-height: 60px; /* Espace pour 2-3 lignes de texte */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-style: italic;
+}
+
+.simulation-timer {
+  font-size: 1.5rem;
+  color: var(--color-accent);
+  margin: 20px 0;
+  font-weight: bold;
+}
+
+/* Ajustements pour les contrôles de simulation dans ce nouveau layout */
+#simulation-controls.app-section {
+  background-color: transparent; /* Pas de fond de carte pour les contrôles globaux */
+  border: none;
+  box-shadow: none;
+  padding: 0; /* Pas de padding supplémentaire */
+  margin-top: 10px; /* Espace au-dessus des boutons */
 }
