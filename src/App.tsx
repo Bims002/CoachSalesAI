@@ -304,16 +304,32 @@ function App() {
 
   useEffect(() => {
     if (currentUser && currentStep === 'auth') {
+      // Si l'utilisateur est connecté et qu'on est sur la page auth, rediriger vers scenarioSelection
       setCurrentStep('scenarioSelection');
     } else if (!currentUser && currentStep !== 'auth') {
+      // Si l'utilisateur n'est pas connecté et qu'on n'est PAS sur la page auth,
+      // (par exemple, il essaie d'accéder à dashboard ou history directement via URL)
+      // alors rediriger vers la page auth.
       setCurrentStep('auth');
     }
-  }, [currentUser, currentStep]);
+    // Si l'utilisateur est connecté et n'est pas sur 'auth', ou
+    // si l'utilisateur n'est pas connecté et est déjà sur 'auth', ne rien faire.
+  }, [currentUser, currentStep, setCurrentStep]);
+
+
+  // Logique de navigation pour la Navbar, en s'assurant que les routes protégées le sont
+  const handleNavigation = (step: AppStep) => {
+    if (!currentUser && (step === 'dashboard' || step === 'history')) {
+      setCurrentStep('auth'); // Rediriger vers l'auth si non connecté et essaie d'accéder à une route protégée
+    } else {
+      setCurrentStep(step);
+    }
+  };
 
   return (
     <>
       <HotjarTracking />
-      <Navbar onNavigate={(step) => setCurrentStep(step)} />
+      <Navbar onNavigate={handleNavigation} />
       <div className="app-container">
         {apiError && <p style={{color: 'orange', textAlign: 'center'}}>Erreur API: {apiError}</p>}
         {speechError && <p style={{color: 'red', textAlign: 'center'}}>{speechError}</p>}
