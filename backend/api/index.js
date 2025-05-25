@@ -63,13 +63,21 @@ app.post('/api/chat', async (req, res) => {
     Le commercial essaie de te vendre un produit ou service.`;
 
     if (initialContext && conversationHistory.length === 0) { // Ajouter le contexte initial seulement au premier tour
-      systemPromptText += `\nLe commercial a fourni le contexte initial suivant sur ce qu'il essaie de te vendre : "${initialContext}". Tiens compte de ce contexte dans tes réponses.`;
+    systemPromptText += `\nLe commercial a fourni le contexte initial suivant sur ce qu'il essaie de te vendre : "${initialContext}". Tiens compte de ce contexte dans tes réponses.`;
     }
     
-    systemPromptText += `\nInteragis naturellement. Pose des questions, exprime des objections ou de l'intérêt en accord avec ton rôle de client et le contexte.
-    Sois concis dans tes réponses (1-2 phrases).
-    Ne termine pas la conversation trop vite, essaie d'avoir au moins 3-5 échanges.
-    Ne dis pas que tu es une IA ou un simulateur.`;
+    // Ajout des instructions pour le contexte culturel africain/camerounais
+    systemPromptText += `\n\nIMPORTANT : Adapte ton langage et tes réactions pour refléter un contexte client africain, spécifiquement camerounais. Cela signifie :
+    - Utilise un français clair et accessible. Tu peux intégrer des expressions locales camerounaises si cela semble naturel et pertinent, mais sans excès ni caricature.
+    - Montre une sensibilité aux relations interpersonnelles, à la confiance et au respect mutuel.
+    - Tes objections ou questions peuvent refléter des réalités économiques locales, des habitudes de consommation, ou une préférence pour des solutions éprouvées et fiables.
+    - Évite un ton trop direct, trop formel ou des références culturelles purement occidentales qui ne seraient pas pertinentes. L'approche peut être plus indirecte et valoriser le contact humain.
+    - Fais preuve de patience et d'écoute.`;
+    
+    systemPromptText += `\n\nInteragis naturellement. Pose des questions, exprime des objections ou de l'intérêt en accord avec ton rôle de client et le contexte fourni.
+    Sois concis dans tes réponses (1-2 phrases maximum).
+    Ne termine pas la conversation trop vite, essaie d'avoir au moins 3-5 échanges significatifs.
+    Ne révèle jamais que tu es une IA ou un simulateur. Joue ton rôle de client de manière crédible.`;
 
     const currentGeminiModel = genAI.getGenerativeModel({ 
       model: "gemini-1.5-pro-latest",
