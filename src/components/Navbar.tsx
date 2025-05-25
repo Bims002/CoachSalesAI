@@ -89,7 +89,19 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
       <div style={{ cursor: 'pointer' }} onClick={() => { onNavigate(currentUser ? 'scenarioSelection' : 'auth'); setIsMobileMenuOpen(false); }}>CoachSales AI</div>
       
       {isMobileView ? (
-        <button onClick={toggleMobileMenu} style={{ fontSize: '1.5rem', background: 'none', border: 'none', color: 'var(--color-text-primary)', cursor: 'pointer' }}>
+        <button 
+          onClick={toggleMobileMenu} 
+          style={{ 
+            fontSize: '1.5rem', // Maintenir la taille de l'icône
+            background: 'none', 
+            border: 'none', 
+            color: 'var(--color-text-primary)', 
+            cursor: 'pointer',
+            padding: '0.25rem 0.5rem', // Réduire le padding pour réduire la taille globale du bouton
+            lineHeight: '1' // Assurer que la hauteur de ligne n'ajoute pas d'espace excessif
+          }}
+          aria-label="Toggle menu" // Pour l'accessibilité
+        >
           {isMobileMenuOpen ? '✕' : '☰'}
         </button>
       ) : (

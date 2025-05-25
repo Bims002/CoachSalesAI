@@ -25,13 +25,15 @@ const ConversationView: React.FC<ConversationViewProps> = ({ messages, interimTr
           <div key={msg.id} className={`message ${msg.sender}`}>
             <p>
               <strong>{msg.sender === 'user' ? 'Vous' : 'Client IA'}:</strong> {msg.text}
-              {msg.sender === 'ai' && msg.audioContent && !isMobile && (
+              {/* Afficher le bouton de lecture audio uniquement sur mobile ET si audioContent existe */}
+              {isMobile && msg.sender === 'ai' && msg.audioContent && (
                 <button
                   className="play-audio-button"
                   onClick={() => onPlayAiAudio(msg.audioContent!)}
                   title="Écouter la réponse de l'IA"
+                  style={{ marginLeft: '10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
                 >
-                  ▶️
+                  🔊
                 </button>
               )}
             </p>
