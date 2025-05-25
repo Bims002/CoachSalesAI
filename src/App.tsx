@@ -10,9 +10,10 @@ import type { SimulationRecord } from './components/HistoryView';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import AuthForm from './components/AuthForm';
+import ContextInput from './components/ContextInput'; // Importer ContextInput
 import { useAuth } from './contexts/AuthContext';
 import useSpeechRecognition from './hooks/useSpeechRecognition';
-import { db } from './firebase-config'; // Importer db de firebase-config
+import { db } from './firebase-config';
 import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 export interface Scenario {
@@ -39,12 +40,13 @@ const IS_MOBILE_DEVICE = /Mobi|Android/i.test(navigator.userAgent);
 const MAX_HISTORY_MESSAGES = 2; // Réduit à 2 messages (1 tour) pour tester
 
 function App() {
-  type AppStep = 'scenarioSelection' | 'simulation' | 'results' | 'history' | 'dashboard' | 'auth'; // Ajouter 'auth'
+  type AppStep = 'scenarioSelection' | 'contextInput' | 'simulation' | 'results' | 'history' | 'dashboard' | 'auth'; // Ajouter 'contextInput'
 
-  const { currentUser } = useAuth(); // Utiliser le hook useAuth
+  const { currentUser } = useAuth();
   const [currentStep, setCurrentStep] = useState<AppStep>(currentUser ? 'scenarioSelection' : 'auth');
   const [scenarios] = useState<Scenario[]>(scenariosData);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
+  const [userContext, setUserContext] = useState<string>(''); // Nouvel état pour le contexte utilisateur
   const [conversation, setConversation] = useState<Message[]>([]);
   const [isAiResponding, setIsAiResponding] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -168,24 +170,32 @@ function App() {
   }, [currentStep, isListening, startListening, stopListening, setIsAiSpeaking]);
 
   const getAiResponseCb = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
-    if (!selectedScenario) return;
+    if (!selectedScenario || !userMessageText.trim() || !userContext.trim()) { // Vérifier aussi userContext
+      console.warn("Scénario, contexte ou message utilisateur vide, appel API annulé.");
+      setIsAiResponding(false);
+      return;
+    }
     setIsAiResponding(true);
     setApiError(null);
-    try {
-      // Envoyer seulement les N derniers messages de l'historique, sans leur contenu audio
-      const historyForApi = currentConvHistory
-        .slice(0, -1) // Exclure le dernier message utilisateur (actuel), qui est envoyé via userTranscript
-        .slice(-MAX_HISTORY_MESSAGES) // Prendre les N derniers messages de cet historique
-        .map(msg => ({ // Ne garder que les champs nécessaires pour l'API Gemini
-          id: msg.id, // L'ID peut être utile pour le débogage, mais pas essentiel pour Gemini
-          text: msg.text,
-          sender: msg.sender
-        }));
 
+    const historyForApi = currentConvHistory
+      .slice(0, -1) 
+      .slice(-MAX_HISTORY_MESSAGES * 2) 
+      .map(msg => ({
+        text: msg.text, // Garder la structure simple pour le backend actuel
+        sender: msg.sender,
+      }));
+
+    try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userTranscript: userMessageText, scenario: selectedScenario, conversationHistory: historyForApi }),
+        body: JSON.stringify({ 
+          userTranscript: userMessageText, 
+          scenario: selectedScenario, 
+          conversationHistory: historyForApi,
+          initialContext: userContext // Envoyer le contexte initial
+        }),
       });
       setIsAiResponding(false);
       if (!response.ok) {
@@ -277,11 +287,17 @@ function App() {
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
     setConversation([]);
+    setUserContext(''); // Réinitialiser le contexte
     if (isListening) stopListening();
-    setCurrentStep('simulation');
+    setCurrentStep('contextInput'); // Aller à la saisie du contexte
     setLastProcessedUserMessageId(null);
-    setAnalysisResults(null); // Réinitialiser les résultats d'analyse
-    setApiError(null); // Réinitialiser les erreurs API
+    setAnalysisResults(null);
+    setApiError(null);
+  };
+
+  const handleSubmitContext = (context: string) => {
+    setUserContext(context);
+    setCurrentStep('simulation'); // Démarrer la simulation après la saisie du contexte
   };
 
   const toggleListening = () => {
@@ -341,10 +357,14 @@ function App() {
               <ScenarioSelection scenarios={scenarios} selectedScenario={selectedScenario} onSelectScenario={handleSelectScenario} />
             </section>
           )}
-          {currentStep === 'simulation' && selectedScenario && (
+          {currentStep === 'contextInput' && selectedScenario && (
+            <ContextInput onSubmitContext={handleSubmitContext} selectedScenarioTitle={selectedScenario.title} />
+          )}
+          {currentStep === 'simulation' && selectedScenario && userContext && (
             <>
               <section id="simulation-info" className="app-section">
                 <h2>Simulation: {selectedScenario.title}</h2>
+                <p style={{ fontStyle: 'italic', color: 'var(--color-text-secondary)', marginBottom: '10px' }}>Contexte: {userContext}</p>
                 <p className="placeholder-text">{selectedScenario.description}</p>
               </section>
               <section id="simulation-controls" className="app-section">

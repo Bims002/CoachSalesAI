@@ -38,48 +38,59 @@ app.get('/api/test', (req, res) => {
 // Route pour la simulation de chat
 app.post('/api/chat', async (req, res) => {
   try {
-    const { userTranscript, scenario, conversationHistory = [] } = req.body;
+    // Déstructurer toutes les variables attendues une seule fois
+    const { userTranscript, scenario, conversationHistory = [], initialContext } = req.body;
 
-    if (!userTranscript || !scenario) {
+    if (!userTranscript || !scenario ) { // initialContext est maintenant optionnel au niveau de la validation de base ici
       return res.status(400).json({ error: 'La transcription de l\'utilisateur et le scénario sont requis.' });
+    }
+    if (scenario && !initialContext && conversationHistory.length === 0) { // Si c'est le début d'une nouvelle simulation (pas d'historique) et que le contexte est manquant
+        return res.status(400).json({ error: 'Le contexte initial est requis pour démarrer une nouvelle simulation.' });
     }
     if (!process.env.GEMINI_API_KEY) {
       console.error('GEMINI_API_KEY n\'est pas définie.');
       return res.status(500).json({ error: 'Configuration du serveur incomplète (clé API manquante).' });
     }
 
-    // Définir l'instruction système pour Gemini
-    const systemInstruction = `Tu es un simulateur de client pour un commercial. Ton rôle est de jouer le client décrit dans le scénario suivant :
+    // Construire l'instruction système
+    // Si initialContext est fourni (ce sera le cas pour le premier tour), l'inclure.
+    // Pour les tours suivants, initialContext ne sera pas renvoyé par le frontend, donc on ne l'inclut pas dans le system prompt.
+    // L'historique de la conversation devrait suffire pour que Gemini garde le contexte.
+    let systemPromptText = `Tu es un simulateur de client pour un commercial. Ton rôle est de jouer le client décrit dans le scénario suivant :
     Scénario: ${scenario.title}
     Description du client: ${scenario.description}
     
-    Le commercial essaie de te vendre un produit ou service (non spécifié, reste général).
-    Interagis naturellement. Pose des questions, exprime des objections ou de l'intérêt en accord avec ton rôle de client.
+    Le commercial essaie de te vendre un produit ou service.`;
+
+    if (initialContext && conversationHistory.length === 0) { // Ajouter le contexte initial seulement au premier tour
+      systemPromptText += `\nLe commercial a fourni le contexte initial suivant sur ce qu'il essaie de te vendre : "${initialContext}". Tiens compte de ce contexte dans tes réponses.`;
+    }
+    
+    systemPromptText += `\nInteragis naturellement. Pose des questions, exprime des objections ou de l'intérêt en accord avec ton rôle de client et le contexte.
     Sois concis dans tes réponses (1-2 phrases).
     Ne termine pas la conversation trop vite, essaie d'avoir au moins 3-5 échanges.
     Ne dis pas que tu es une IA ou un simulateur.`;
 
-    const geminiModel = genAI.getGenerativeModel({ 
+    const currentGeminiModel = genAI.getGenerativeModel({ 
       model: "gemini-1.5-pro-latest",
       systemInstruction: {
-        role: "system", // Ou un autre rôle si Gemini le préfère pour les instructions système
-        parts: [{ text: systemInstruction }],
+        role: "system",
+        parts: [{ text: systemPromptText }],
       }
     });
 
-    // Construire l'historique pour le modèle Gemini à partir de `conversationHistory`
-    // `conversationHistory` est l'historique jusqu'au dernier message de l'IA (ou vide si premier tour)
-    const geminiChatHistory = conversationHistory.map(msg => ({
-      role: msg.sender === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.text }],
-    }));
-    
-    // Démarrer une session de chat avec l'historique
-    const chat = geminiModel.startChat({
+    let geminiChatHistory = [];
+    if (conversationHistory && conversationHistory.length > 0) {
+      geminiChatHistory = conversationHistory.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text }],
+      }));
+    }
+
+    const chat = currentGeminiModel.startChat({ // Utiliser currentGeminiModel
       history: geminiChatHistory,
     });
 
-    // Envoyer le message actuel de l'utilisateur
     const result = await chat.sendMessage(userTranscript);
     const aiResponseText = result.response.text();
     
