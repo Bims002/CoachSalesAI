@@ -15,8 +15,7 @@ import { useAuth } from './contexts/AuthContext';
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 import { db } from './firebase-config';
 import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
-import aiAvatarSrc from './img1.png'; // Importer l'avatar de l'IA
-import userAvatarPlaceholderSrc from './img2.png'; // Importer l'avatar placeholder de l'utilisateur
+// Les imports des images sont retirés, on utilisera des chemins publics
 
 export interface Scenario {
   id: string;
@@ -405,7 +404,7 @@ function App() {
               <div className="simulation-panels-container">
                 {/* Panneau IA */}
                 <div className="simulation-panel">
-                  <img src={aiAvatarSrc} alt="Client IA" className="avatar" />
+                  <img src="/assets/img1.png" alt="Client IA" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=IA')} />
                   <h4>{selectedScenario.title}</h4>
                   <div className="last-message">
                     {isAiSpeaking && <span style={{fontSize: '2em', animation: 'pulse 1.5s infinite ease-in-out'}}>🔊</span>}
@@ -415,7 +414,7 @@ function App() {
                 </div>
                 {/* Panneau Utilisateur */}
                 <div className="simulation-panel">
-                  <img src={currentUser?.photoURL || userAvatarPlaceholderSrc} alt="Vous" className="avatar" />
+                  <img src={currentUser?.photoURL || "/assets/img2.png"} alt="Vous" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=Vous')}/>
                   <h4>Vous {currentUser?.displayName ? `(${currentUser.displayName})` : ''}</h4>
                   <div className="last-message">
                     {isListening && <span style={{fontSize: '2em'}} className="mic-icon-listening">🎤</span>}
