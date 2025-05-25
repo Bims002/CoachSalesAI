@@ -41,46 +41,52 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   }, []);
 
   const navLinkBaseStyle: React.CSSProperties = {
-    padding: '12px 20px', // Augmenter le padding pour plus d'espace
+    padding: '12px 20px', 
     cursor: 'pointer',
     backgroundColor: 'transparent',
     color: 'var(--color-text-primary)',
-    border: 'none', // Retirer les bordures de bouton
+    border: 'none', 
     textAlign: 'left',
-    width: '100%',
+    width: '100%', // Important pour que le fond prenne toute la largeur
     fontSize: '1rem',
     display: 'flex',
     alignItems: 'center',
-    borderRadius: '6px', // Coins arrondis pour l'effet de survol
+    borderRadius: '6px', 
     transition: 'background-color 0.2s ease-in-out, color 0.2s ease-in-out',
-    marginBottom: '8px', // Ajouter un espace entre les liens
+    marginBottom: '8px', 
+    boxSizing: 'border-box', // S'assurer que padding et border ne changent pas la taille calculée
   };
   
-  // Style pour le survol des liens
   const navLinkHoverStyle: React.CSSProperties = {
     backgroundColor: 'var(--color-accent)',
-    color: 'white', // Ou var(--color-bg) pour un contraste différent
+    color: 'white', 
   };
-
-  // Pas besoin de navLinkMobileStyle distinct si on utilise la même base pour la sidebar et le dropdown
   
   const iconStyle: React.CSSProperties = {
-    marginRight: '12px', // Plus d'espace pour l'icône
-    fontSize: '1.3em', // Icônes légèrement plus grandes
-    minWidth: '20px', // Assurer un alignement si les icônes ont des largeurs différentes
+    marginRight: '12px', 
+    fontSize: '1.3em', 
+    minWidth: '20px', 
     textAlign: 'center',
+    lineHeight: '1', // Empêcher l'icône d'affecter la hauteur de ligne
   };
 
-  // Fonction pour créer un lien stylisé (div cliquable au lieu de bouton)
   const createNavLink = (
     text: string, 
     icon: string, 
     action: () => void, 
-    isLogout?: boolean // Pour un style potentiellement différent pour la déconnexion
+    isActive: boolean, // Nouvelle prop pour l'état actif
+    isLogout?: boolean 
   ) => {
     const [isHovered, setIsHovered] = useState(false);
-    const currentStyle = isHovered ? {...navLinkBaseStyle, ...navLinkHoverStyle} : navLinkBaseStyle;
-    const logoutStyle = isLogout ? { color: '#ff7b72' } : {}; // Style optionnel pour déconnexion
+    
+    let currentStyle = { ...navLinkBaseStyle };
+    if (isActive) {
+      currentStyle = { ...currentStyle, ...navLinkHoverStyle }; // Appliquer le style hover si actif
+    } else if (isHovered) {
+      currentStyle = { ...currentStyle, ...navLinkHoverStyle };
+    }
+
+    const logoutStyle = isLogout ? { color: isActive || isHovered ? 'white' : '#ff7b72' } : {};
 
     return (
       <div 
@@ -88,27 +94,37 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
         style={{...currentStyle, ...logoutStyle}}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        role="button" // Pour l'accessibilité
-        tabIndex={0} // Pour la navigation au clavier
-        onKeyPress={(e) => { if (e.key === 'Enter' || e.key === ' ') action(); }} // Accessibilité clavier
+        role="button" 
+        tabIndex={0} 
+        onKeyPress={(e) => { if (e.key === 'Enter' || e.key === ' ') action(); }} 
       >
         <span style={iconStyle}>{icon}</span>{text}
       </div>
     );
   };
 
+  // Déterminer l'étape active pour le style
+  // Cela nécessite que `App.tsx` passe `currentStep` à `Navbar` ou que Navbar ait accès à cette info.
+  // Pour l'instant, on va supposer que `onNavigate` est appelé avec l'étape actuelle,
+  // mais pour un style "actif" persistant, il faudrait l'état `currentStep` ici.
+  // Simplification: on ne gère que le survol pour l'instant, pas un état "actif" distinct visuellement après clic,
+  // car cela nécessiterait de passer `currentStep` en prop.
+  // La logique ci-dessus avec `isActive` est une préparation si on ajoute `currentStep`.
 
-  const renderNavLinks = () => { // isMobileLayout n'est plus nécessaire ici si le style est géré par le conteneur
+  const renderNavLinks = () => { 
+    // Pour un vrai style "actif", il faudrait comparer avec `currentStep`
+    // Exemple: const isActiveDashboard = currentStep === 'dashboard';
+    // Pour l'instant, isActive sera toujours false.
     return (
       <>
         {currentUser ? (
           <>
-            {createNavLink('Tableau de Bord', '📊', () => handleNavLinkClick('dashboard'))}
-            {createNavLink('Historique', '🕒', () => handleNavLinkClick('history'))}
-            {createNavLink('Déconnexion', '↪️', handleSignOut, true)}
+            {createNavLink('Tableau de Bord', '📊', () => handleNavLinkClick('dashboard'), false)}
+            {createNavLink('Historique', '🕒', () => handleNavLinkClick('history'), false)}
+            {createNavLink('Déconnexion', '↪️', handleSignOut, false, true)}
           </>
         ) : (
-          createNavLink('Connexion / Inscription', '👤', () => handleNavLinkClick('auth'))
+          createNavLink('Connexion / Inscription', '👤', () => handleNavLinkClick('auth'), false)
         )}
       </>
     );
