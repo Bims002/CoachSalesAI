@@ -3,11 +3,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase-config';
 import { signOut } from 'firebase/auth';
 
+// Définir AppStep ici ou l'importer depuis App.tsx si partagé
+type AppStep = 'scenarioSelection' | 'contextInput' | 'simulation' | 'results' | 'history' | 'dashboard' | 'auth';
+
 interface NavbarProps {
-  onNavigate: (step: 'scenarioSelection' | 'history' | 'dashboard' | 'auth') => void;
+  onNavigate: (step: AppStep) => void;
+  currentStep: AppStep; // Ajouter currentStep aux props
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
+const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentStep }) => {
   const { currentUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -112,19 +116,17 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   // La logique ci-dessus avec `isActive` est une préparation si on ajoute `currentStep`.
 
   const renderNavLinks = () => { 
-    // Pour un vrai style "actif", il faudrait comparer avec `currentStep`
-    // Exemple: const isActiveDashboard = currentStep === 'dashboard';
-    // Pour l'instant, isActive sera toujours false.
     return (
       <>
         {currentUser ? (
           <>
-            {createNavLink('Tableau de Bord', '📊', () => handleNavLinkClick('dashboard'), false)}
-            {createNavLink('Historique', '🕒', () => handleNavLinkClick('history'), false)}
-            {createNavLink('Déconnexion', '↪️', handleSignOut, false, true)}
+            {createNavLink('Tableau de Bord', '📊', () => handleNavLinkClick('dashboard'), currentStep === 'dashboard')}
+            {createNavLink('Historique', '🕒', () => handleNavLinkClick('history'), currentStep === 'history')}
+            {/* Le lien de déconnexion n'a pas d'état "actif" typique */}
+            {createNavLink('Déconnexion', '↪️', handleSignOut, false, true)} 
           </>
         ) : (
-          createNavLink('Connexion / Inscription', '👤', () => handleNavLinkClick('auth'), false)
+          createNavLink('Connexion / Inscription', '👤', () => handleNavLinkClick('auth'), currentStep === 'auth')
         )}
       </>
     );

@@ -345,7 +345,7 @@ function App() {
   return (
     <div className="app-layout">
       <HotjarTracking />
-      <Navbar onNavigate={handleNavigation} /> {/* Navbar sera stylée pour être une sidebar */}
+      <Navbar onNavigate={handleNavigation} currentStep={currentStep} /> {/* Passer currentStep */}
       <main className="main-content">
         <div className="app-container"> {/* Conteneur pour centrer le contenu des sections */}
           {apiError && <p style={{color: 'orange', textAlign: 'center', marginBottom: '20px'}}>Erreur API: {apiError}</p>}
