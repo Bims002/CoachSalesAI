@@ -10,11 +10,13 @@ import type { SimulationRecord } from './components/HistoryView';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import AuthForm from './components/AuthForm';
-import ContextInput from './components/ContextInput'; // Importer ContextInput
+import ContextInput from './components/ContextInput';
 import { useAuth } from './contexts/AuthContext';
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 import { db } from './firebase-config';
 import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
+import aiAvatarSrc from './img1.png'; // Importer l'avatar de l'IA
+import userAvatarPlaceholderSrc from './img2.png'; // Importer l'avatar placeholder de l'utilisateur
 
 export interface Scenario {
   id: string;
@@ -403,7 +405,7 @@ function App() {
               <div className="simulation-panels-container">
                 {/* Panneau IA */}
                 <div className="simulation-panel">
-                  <img src="/assets/ai_avatar.png" alt="Client IA" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=IA')} />
+                  <img src={aiAvatarSrc} alt="Client IA" className="avatar" />
                   <h4>{selectedScenario.title}</h4>
                   <div className="last-message">
                     {isAiSpeaking && <span style={{fontSize: '2em', animation: 'pulse 1.5s infinite ease-in-out'}}>🔊</span>}
@@ -413,7 +415,7 @@ function App() {
                 </div>
                 {/* Panneau Utilisateur */}
                 <div className="simulation-panel">
-                  <img src={currentUser?.photoURL || "/assets/user_avatar.png"} alt="Vous" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=Vous')}/>
+                  <img src={currentUser?.photoURL || userAvatarPlaceholderSrc} alt="Vous" className="avatar" />
                   <h4>Vous {currentUser?.displayName ? `(${currentUser.displayName})` : ''}</h4>
                   <div className="last-message">
                     {isListening && <span style={{fontSize: '2em'}} className="mic-icon-listening">🎤</span>}
