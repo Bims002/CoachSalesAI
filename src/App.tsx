@@ -443,6 +443,9 @@ function App() {
             </section>
           )}
         </div>
+        <footer style={{ textAlign: 'center', padding: '20px 0', marginTop: 'auto', color: 'var(--color-text-secondary)', fontSize: '0.9rem', borderTop: `1px solid var(--color-border)` }}>
+          &copy; {new Date().getFullYear()} CoachSales AI
+        </footer>
       </main>
     </div>
   );

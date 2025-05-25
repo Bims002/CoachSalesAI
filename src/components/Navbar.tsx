@@ -118,15 +118,23 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentStep }) => {
   const renderNavLinks = () => { 
     return (
       <>
+        {/* Lien Nouvelle Simulation toujours visible en premier (sauf si sur la page auth et non connecté) */}
+        {/* Si l'utilisateur n'est pas connecté et est sur la page 'auth', on ne montre que le lien d'auth */}
+        {!(currentStep === 'auth' && !currentUser) && 
+          createNavLink('Nouvelle Simulation', '✨', () => handleNavLinkClick('scenarioSelection'), currentStep === 'scenarioSelection' || currentStep === 'contextInput' || currentStep === 'simulation')
+        }
+
         {currentUser ? (
           <>
             {createNavLink('Tableau de Bord', '📊', () => handleNavLinkClick('dashboard'), currentStep === 'dashboard')}
             {createNavLink('Historique', '🕒', () => handleNavLinkClick('history'), currentStep === 'history')}
-            {/* Le lien de déconnexion n'a pas d'état "actif" typique */}
             {createNavLink('Déconnexion', '↪️', handleSignOut, false, true)} 
           </>
         ) : (
-          createNavLink('Connexion / Inscription', '👤', () => handleNavLinkClick('auth'), currentStep === 'auth')
+          // Si non connecté, et pas déjà sur 'auth', afficher le lien de connexion.
+          // Si sur 'auth', ce lien est déjà implicitement géré par le titre cliquable ou le flux.
+          // Pour plus de clarté, on peut le remontrer ici si on n'est pas sur la page 'auth'.
+          currentStep !== 'auth' && createNavLink('Connexion / Inscription', '👤', () => handleNavLinkClick('auth'), false)
         )}
       </>
     );
