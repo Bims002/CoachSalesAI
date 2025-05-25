@@ -11,7 +11,7 @@ interface AnalysisResults {
 interface ResultsViewProps {
   analysisResults: AnalysisResults | null;
   selectedScenarioTitle?: string | null;
-  conversation: Message[]; // Garder la transcription ici pour l'instant
+  // conversation: Message[]; // Retiré car non utilisé pour l'instant dans cette version
   onNewSimulation: () => void;
   isAnalyzing: boolean;
 }
@@ -19,7 +19,7 @@ interface ResultsViewProps {
 const ResultsView: React.FC<ResultsViewProps> = ({ 
   analysisResults, 
   selectedScenarioTitle, 
-  conversation, 
+  // conversation, // Retiré
   onNewSimulation, 
   isAnalyzing 
 }) => {
