@@ -10,12 +10,11 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   const { currentUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
 
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      setIsMobileMenuOpen(false); // Fermer le menu après déconnexion
+      setIsMobileMenuOpen(false);
       onNavigate('auth'); 
     } catch (error) {
       console.error("Erreur lors de la déconnexion:", error);
@@ -25,106 +24,104 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
-
-  const handleResize = () => {
-    setIsMobileView(window.innerWidth < 768);
-    if (window.innerWidth >= 768) {
-      setIsMobileMenuOpen(false); // Fermer le menu si on passe en vue desktop
-    }
+  
+  const handleNavLinkClick = (step: 'scenarioSelection' | 'history' | 'dashboard' | 'auth') => {
+    onNavigate(step);
+    setIsMobileMenuOpen(false);
   };
 
   useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false); 
+      }
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const navLinkStyle: React.CSSProperties = {
-    marginRight: '15px',
-    fontSize: '1rem',
-    padding: '8px 12px',
+  const navLinkBaseStyle: React.CSSProperties = {
+    padding: '10px 15px',
     cursor: 'pointer',
     backgroundColor: 'transparent',
     color: 'var(--color-text-primary)',
-    border: 'none'
+    border: 'none',
+    textAlign: 'left',
+    width: '100%',
+    fontSize: '1rem',
+    display: 'flex',
+    alignItems: 'center',
   };
   
-  const mobileNavLinkStyle: React.CSSProperties = {
-    ...navLinkStyle,
-    display: 'block',
-    width: '100%',
-    textAlign: 'left',
-    padding: '15px 20px',
-    marginRight: 0,
-    borderBottom: '1px solid var(--color-border)'
+  const navLinkMobileStyle: React.CSSProperties = {
+    ...navLinkBaseStyle,
+    borderBottom: '1px solid var(--color-border)',
+  };
+  
+  const iconStyle: React.CSSProperties = {
+    marginRight: '8px',
+    fontSize: '1.2em',
   };
 
-  const renderNavLinks = (isMobile: boolean) => (
-    <>
-      {currentUser ? (
-        <>
-          <button onClick={() => { onNavigate('dashboard'); setIsMobileMenuOpen(false); }} style={isMobile ? mobileNavLinkStyle : navLinkStyle}>📊 Tableau de Bord</button>
-          <button onClick={() => { onNavigate('history'); setIsMobileMenuOpen(false); }} style={isMobile ? mobileNavLinkStyle : navLinkStyle}>🕒 Historique</button>
-          <button onClick={handleSignOut} style={isMobile ? {...mobileNavLinkStyle, backgroundColor: 'var(--color-text-secondary)', color: 'var(--color-bg)'} : {...navLinkStyle, backgroundColor: 'var(--color-text-secondary)', color: 'var(--color-bg)'} }>↪️ Déconnexion</button>
-        </>
-      ) : (
-        <button onClick={() => { onNavigate('auth'); setIsMobileMenuOpen(false); }} style={isMobile ? mobileNavLinkStyle : navLinkStyle}>👤 Connexion / Inscription</button>
-      )}
-    </>
-  );
+  const renderNavLinks = (isMobileLayout: boolean) => { // Renommé pour clarifier que c'est pour le layout mobile du menu
+    const styleToUse = isMobileLayout ? navLinkMobileStyle : navLinkBaseStyle; // Utiliser navLinkBaseStyle pour desktop (sera dans la sidebar)
+    return (
+      <>
+        {currentUser ? (
+          <>
+            <button onClick={() => handleNavLinkClick('dashboard')} style={styleToUse}><span style={iconStyle}>📊</span>Tableau de Bord</button>
+            <button onClick={() => handleNavLinkClick('history')} style={styleToUse}><span style={iconStyle}>🕒</span>Historique</button>
+            <button onClick={handleSignOut} style={{...styleToUse, ...(isMobileLayout && {backgroundColor: 'var(--color-text-secondary)', color: 'var(--color-bg)'}) }}><span style={iconStyle}>↪️</span>Déconnexion</button>
+          </>
+        ) : (
+          <button onClick={() => handleNavLinkClick('auth')} style={styleToUse}><span style={iconStyle}>👤</span>Connexion / Inscription</button>
+        )}
+      </>
+    );
+  };
 
   return (
-    <nav style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '10px 20px',
-      backgroundColor: 'var(--color-bg)',
-      color: 'var(--color-text-primary)',
-      fontWeight: 'bold',
-      fontSize: '1.5rem',
-      borderBottom: '1px solid var(--color-border)',
-      marginBottom: '20px',
-      position: 'relative' // Pour le positionnement du menu mobile
-    }}>
-      <div style={{ cursor: 'pointer' }} onClick={() => { onNavigate(currentUser ? 'scenarioSelection' : 'auth'); setIsMobileMenuOpen(false); }}>CoachSales AI</div>
-      
-      {isMobileView ? (
+    <>
+      {/* Sidebar pour desktop (sera cachée sur mobile par CSS) */}
+      <nav className="sidebar"> {/* Appliquer la classe .sidebar définie dans App.css */}
+        <div 
+          style={{ 
+            marginBottom: '30px', 
+            fontSize: '1.8rem', 
+            fontWeight: 'bold', 
+            textAlign: 'center', 
+            cursor: 'pointer',
+            padding: '10px 0', // Ajouter un peu de padding
+            borderBottom: `1px solid var(--color-border)` // Séparateur
+          }} 
+          onClick={() => handleNavLinkClick(currentUser ? 'scenarioSelection' : 'auth')}
+        >
+          CoachSales AI
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {renderNavLinks(true)} {/* Liens verticaux dans la sidebar */}
+        </div>
+      </nav>
+
+      {/* Navbar pour mobile en haut, avec menu hamburger (sera cachée sur desktop par CSS) */}
+      <nav className="mobile-navbar">
+        <div style={{ cursor: 'pointer' }} onClick={() => handleNavLinkClick(currentUser ? 'scenarioSelection' : 'auth')}>CoachSales AI</div>
         <button 
           onClick={toggleMobileMenu} 
-          style={{ 
-            fontSize: '1.5rem', // Maintenir la taille de l'icône
-            background: 'none', 
-            border: 'none', 
-            color: 'var(--color-text-primary)', 
-            cursor: 'pointer',
-            padding: '0.25rem 0.5rem', // Réduire le padding pour réduire la taille globale du bouton
-            lineHeight: '1' // Assurer que la hauteur de ligne n'ajoute pas d'espace excessif
-          }}
-          aria-label="Toggle menu" // Pour l'accessibilité
+          className="hamburger-button"
+          aria-label="Toggle menu"
         >
           {isMobileMenuOpen ? '✕' : '☰'}
         </button>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          {renderNavLinks(false)}
-        </div>
-      )}
+      </nav>
 
-      {isMobileView && isMobileMenuOpen && (
-        <div style={{
-          position: 'absolute',
-          top: '100%', // Se positionne juste en dessous de la navbar
-          left: 0,
-          right: 0,
-          backgroundColor: 'var(--color-bg-secondary)',
-          zIndex: 1000,
-          borderTop: '1px solid var(--color-border)',
-          boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
-        }}>
+      {/* Menu déroulant pour mobile */}
+      {isMobileMenuOpen && (
+        <div className="mobile-menu-dropdown">
           {renderNavLinks(true)}
         </div>
       )}
-    </nav>
+    </>
   );
 };
 

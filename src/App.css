@@ -22,17 +22,90 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.app-container {
-  max-width: 960px;
-  margin: 40px auto;
-  padding: 40px;
-  background-color: var(--color-bg-secondary);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px var(--color-shadow);
+/* Nouvelle structure pour layout avec sidebar */
+.app-layout {
+  display: flex;
+  min-height: 100vh; /* Assurer que le layout prend toute la hauteur */
 }
 
-header {
-  background-color: var(--color-bg);
+.sidebar {
+  width: 260px; /* Largeur de la sidebar */
+  background-color: var(--color-bg-secondary); /* Fond légèrement différent pour la sidebar */
+  padding: 20px;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  position: fixed; /* Sidebar fixe */
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1000; 
+  transition: width 0.3s ease; /* Pour une future sidebar escamotable */
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 20px; /* Réduire un peu le padding général */
+  margin-left: 260px; 
+  background-color: var(--color-bg); 
+  overflow-y: auto; 
+  transition: margin-left 0.3s ease; /* Pour une future sidebar escamotable */
+}
+
+.app-container { 
+  max-width: 960px; 
+  margin: 0 auto; 
+}
+
+/* Styles pour la navbar mobile et le menu hamburger */
+.mobile-navbar {
+  display: none; /* Cachée par défaut, affichée par media query */
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1001; /* Au-dessus de la sidebar si elle devenait escamotable */
+}
+
+.hamburger-button {
+  font-size: 1.8rem; /* Taille de l'icône hamburger */
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem; 
+  line-height: 1;
+  /* Retirer le style de bouton global pour ce bouton spécifique */
+  box-shadow: none;
+  font-weight: normal; /* Le bold global n'est pas nécessaire ici */
+}
+.hamburger-button:hover {
+  background-color: transparent; /* Pas de changement de fond au survol */
+  box-shadow: none;
+}
+
+
+.mobile-menu-dropdown {
+  display: none; /* Caché par défaut */
+  position: fixed;
+  top: 57px; /* Juste en dessous de la mobile-navbar (hauteur approx) */
+  left: 0;
+  right: 0;
+  background-color: var(--color-bg-secondary);
+  z-index: 1000;
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+
+header { /* Ce header n'est plus utilisé */
+  /* display: none; */ /* On peut le cacher complètement */
   color: var(--color-text-primary);
   padding: 24px;
   text-align: center;
@@ -266,27 +339,47 @@ ul {
 
 
 @media (max-width: 768px) {
+  .sidebar {
+    display: none; /* Cacher la sidebar sur mobile */
+  }
+  .main-content {
+    margin-left: 0; /* Le contenu principal prend toute la largeur */
+    padding: 15px; /* Ajuster le padding pour mobile */
+    padding-top: 70px; /* Laisser de la place pour la mobile-navbar fixe */
+  }
   .app-container {
-    max-width: 100%;
-    margin: 20px;
-    padding: 20px;
+    margin: 0;
+    padding: 0;
+  }
+  .mobile-navbar {
+    display: flex; /* Afficher la navbar mobile */
+  }
+  .mobile-menu-dropdown {
+    display: block; /* S'affiche si isMobileMenuOpen est true (géré par JS) */
   }
 
-  header h1 {
-    font-size: 1.8rem;
+  /* Ajustements généraux pour mobile */
+  .app-section h2 {
+    font-size: 1.6rem;
   }
-
-  .app-section {
-    padding: 20px;
+  .app-section h3 {
+    font-size: 1.3rem;
   }
-
-  button {
-    width: 100%;
-    padding: 16px 0;
-    font-size: 1.2rem;
+  button { /* Les boutons dans les sections prendront 100% de largeur */
+    /* width: 100%; */ /* Commenté car déjà appliqué globalement, mais peut être réactivé si besoin spécifique */
+    /* padding: 14px 0; */ /* Idem */
+    font-size: 1.1rem; /* Ajuster la taille de police des boutons */
+  }
+  /* S'assurer que les boutons dans la navbar mobile ne prennent pas 100% de largeur */
+  .mobile-menu-dropdown button, .sidebar button {
+      width: 100% !important; /* Forcer la largeur pour les liens du menu */
+  }
+   .hamburger-button { /* S'assurer que le hamburger ne prend pas 100% */
+    width: auto !important; 
+    padding: 0.25rem 0.5rem !important;
   }
 
   .messages-list {
-    max-height: 300px;
+    max-height: 280px; /* Ajuster la hauteur pour mobile */
   }
 }

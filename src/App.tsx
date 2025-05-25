@@ -343,17 +343,22 @@ function App() {
   };
 
   return (
-    <>
+    <div className="app-layout">
       <HotjarTracking />
-      <Navbar onNavigate={handleNavigation} />
-      <div className="app-container">
-        {apiError && <p style={{color: 'orange', textAlign: 'center'}}>Erreur API: {apiError}</p>}
-        {speechError && <p style={{color: 'red', textAlign: 'center'}}>{speechError}</p>}
-        {IS_MOBILE_DEVICE && currentStep === 'simulation' && !isAnalyzing && <p style={{textAlign: 'center', padding: '10px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px'}}>Note: Sur mobile, cliquez sur ▶️ à côté du message de l'IA pour l'entendre.</p>}
-        <main>
+      <Navbar onNavigate={handleNavigation} /> {/* Navbar sera stylée pour être une sidebar */}
+      <main className="main-content">
+        <div className="app-container"> {/* Conteneur pour centrer le contenu des sections */}
+          {apiError && <p style={{color: 'orange', textAlign: 'center', marginBottom: '20px'}}>Erreur API: {apiError}</p>}
+          {speechError && <p style={{color: 'red', textAlign: 'center', marginBottom: '20px'}}>{speechError}</p>}
+          {IS_MOBILE_DEVICE && currentStep === 'simulation' && !isAnalyzing && 
+            <p style={{textAlign: 'center', padding: '10px', backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)', border: `1px solid var(--color-border)`, borderRadius: '8px', marginBottom: '20px'}}>
+              Note: Sur mobile, cliquez sur 🔊 à côté du message de l'IA pour l'entendre.
+            </p>
+          }
+          
           {currentStep === 'scenarioSelection' && (
             <section id="scenario-selection" className="app-section">
-              <h2>Étape 1: Choisir un scénario</h2>
+              <h2>Choisir un Scénario</h2>
               <ScenarioSelection scenarios={scenarios} selectedScenario={selectedScenario} onSelectScenario={handleSelectScenario} />
             </section>
           )}
@@ -364,7 +369,7 @@ function App() {
             <>
               <section id="simulation-info" className="app-section">
                 <h2>Simulation: {selectedScenario.title}</h2>
-                <p style={{ fontStyle: 'italic', color: 'var(--color-text-secondary)', marginBottom: '10px' }}>Contexte: {userContext}</p>
+                <p style={{ fontStyle: 'italic', color: 'var(--color-text-secondary)', marginBottom: '10px', borderLeft: `4px solid var(--color-accent)`, paddingLeft: '10px' }}>Contexte: {userContext}</p>
                 <p className="placeholder-text">{selectedScenario.description}</p>
               </section>
               <section id="simulation-controls" className="app-section">
@@ -404,27 +409,13 @@ function App() {
             </>
           )}
           {currentStep === 'results' && (
-            <section id="results-display" className="app-section">
-              <h2>Étape 3: Résultats</h2>
-              {selectedScenario && <p>Scénario: {selectedScenario.title}</p>}
-              {isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center'}}>📊 Analyse en cours...</p>} {/* Indicateur d'analyse sur la page de résultats si on arrive ici pendant l'analyse */}
-              {!isAnalyzing && analysisResults && (
-                <>
-                  <h4>Score Global :</h4>
-                  <p>{analysisResults.score !== undefined ? analysisResults.score : '(Score non disponible)'}</p>
-                  <h4>Conseils personnalisés :</h4>
-                  <ul>
-                    {analysisResults.conseils && analysisResults.conseils.length > 0 ? analysisResults.conseils.map((item: string, index: number) => <li key={index}>{item}</li>) : <li>(Aucun conseil)</li>}
-                  </ul>
-                  <h4>Points à améliorer :</h4>
-                  <ul>
-                    {analysisResults.ameliorations && analysisResults.ameliorations.length > 0 ? analysisResults.ameliorations.map((item: string, index: number) => <li key={index}>{item}</li>) : <li>(Aucun point spécifique)</li>}
-                  </ul>
-                </>
-              )}
-              {!isAnalyzing && !analysisResults && !apiError && <p className="placeholder-text" style={{textAlign: 'center'}}>(Aucun résultat d'analyse disponible)</p>} {/* Message si pas de résultats et pas d'erreur */}
-              <button onClick={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}>Nouvelle simulation</button> {/* Réinitialiser les états */}
-            </section>
+            <ResultsView 
+              analysisResults={analysisResults}
+              selectedScenarioTitle={selectedScenario?.title}
+              // conversation={conversation} // Retiré car ResultsView ne l'utilise plus directement
+              onNewSimulation={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}
+              isAnalyzing={isAnalyzing}
+            />
           )}
           {currentStep === 'history' && (
             <section id="history-display" className="app-section">
@@ -433,7 +424,7 @@ function App() {
                 setSelectedScenario(scenarios.find(s => s.title === record.scenarioTitle) ?? null);
                 setAnalysisResults({
                   score: record.score,
-                  conseils: [],
+                  conseils: record.summary ? record.summary.split(', ') : [], 
                   ameliorations: record.summary ? record.summary.split(', ') : [],
                 });
                 setCurrentStep('results');
@@ -452,10 +443,9 @@ function App() {
               <AuthForm />
             </section>
           )}
-        </main>
-        <footer><p>&copy; {new Date().getFullYear()} CoachSales AI</p></footer>
-      </div>
-    </>
+        </div>
+      </main>
+    </div>
   );
 }
 
