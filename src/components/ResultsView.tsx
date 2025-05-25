@@ -5,13 +5,13 @@ interface AnalysisResults {
   score?: number;
   conseils?: string[];
   ameliorations?: string[];
-  // Ajoutez d'autres champs si Gemini peut les fournir, ex: pointsForts?: string[];
 }
 
 interface ResultsViewProps {
   analysisResults: AnalysisResults | null;
   selectedScenarioTitle?: string | null;
-  // conversation: Message[]; // Retiré car non utilisé pour l'instant dans cette version
+  conversation: Message[]; // Réintroduit pour le téléchargement
+  userContext?: string; // Ajouter le contexte utilisateur pour le téléchargement
   onNewSimulation: () => void;
   isAnalyzing: boolean;
 }
@@ -19,7 +19,8 @@ interface ResultsViewProps {
 const ResultsView: React.FC<ResultsViewProps> = ({ 
   analysisResults, 
   selectedScenarioTitle, 
-  // conversation, // Retiré
+  conversation, 
+  userContext,
   onNewSimulation, 
   isAnalyzing 
 }) => {
@@ -46,6 +47,53 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     borderRadius: '6px',
     border: '1px solid var(--color-border)'
   };
+
+  const handleDownload = () => {
+    if (!analysisResults || !selectedScenarioTitle) return;
+
+    let content = `Simulation CoachSales AI\n`;
+    content += `=========================\n\n`;
+    content += `Scénario: ${selectedScenarioTitle}\n`;
+    if (userContext) {
+      content += `Contexte initial fourni: ${userContext}\n`;
+    }
+    content += `Date: ${new Date().toLocaleString()}\n\n`;
+
+    content += `--- Transcription de la Conversation ---\n`;
+    conversation.forEach(msg => {
+      content += `${msg.sender === 'user' ? 'Vous' : 'Client IA'}: ${msg.text}\n`;
+    });
+    content += `\n--- Fin de la Transcription ---\n\n`;
+
+    content += `--- Analyse de la Simulation ---\n`;
+    content += `Score Global: ${analysisResults.score !== undefined ? analysisResults.score + ' / 100' : 'Non disponible'}\n\n`;
+    
+    content += `Conseils Personnalisés:\n`;
+    if (analysisResults.conseils && analysisResults.conseils.length > 0) {
+      analysisResults.conseils.forEach(c => content += `- ${c}\n`);
+    } else {
+      content += `(Aucun conseil spécifique)\n`;
+    }
+    content += `\n`;
+
+    content += `Points à Améliorer:\n`;
+    if (analysisResults.ameliorations && analysisResults.ameliorations.length > 0) {
+      analysisResults.ameliorations.forEach(a => content += `- ${a}\n`);
+    } else {
+      content += `(Aucun point d'amélioration spécifique)\n`;
+    }
+    content += `\n--- Fin de l'Analyse ---\n`;
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `simulation_coachsales_${selectedScenarioTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  };
+
 
   if (isAnalyzing) {
     return (
@@ -109,26 +157,23 @@ const ResultsView: React.FC<ResultsViewProps> = ({
         )}
       </div>
       
-      {/* Optionnel: Afficher la transcription ici si souhaité */}
-      {/* 
-      <div style={cardStyle}>
-        <h3 style={titleStyle}>Transcription Complète</h3>
-        <div className="messages-list" style={{ maxHeight: '300px', overflowY: 'auto', backgroundColor: 'var(--color-bg)', padding: '15px', borderRadius: '8px' }}>
-          {conversation.length > 0 ? (
-            conversation.map((msg) => (
-              <div key={msg.id} className={`message ${msg.sender}`} style={{ maxWidth: '100%', marginBottom: '10px' }}>
-                <p><strong>{msg.sender === 'user' ? 'Vous' : 'Client IA'}:</strong> {msg.text}</p>
-              </div>
-            ))
-          ) : (
-            <p className="placeholder-text">(Aucune conversation enregistrée)</p>
-          )}
-        </div>
-      </div>
-      */}
-
       <button onClick={onNewSimulation} style={{ marginTop: '30px', width: '100%', fontSize: '1.2em', padding: '15px 0' }}>
         🚀 Nouvelle Simulation
+      </button>
+
+      <button 
+        onClick={handleDownload} 
+        style={{ 
+          marginTop: '20px', 
+          width: '100%', 
+          fontSize: '1.1em', 
+          padding: '12px 0', 
+          backgroundColor: 'var(--color-text-secondary)', 
+          color: 'var(--color-bg)' 
+        }}
+        disabled={!analysisResults} // Désactiver si pas de résultats
+      >
+        💾 Télécharger la Simulation (.txt)
       </button>
     </div>
   );

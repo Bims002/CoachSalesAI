@@ -375,13 +375,11 @@ function App() {
               <section id="simulation-controls" className="app-section">
                 <h3>Votre tour :</h3>
                 <SimulationControls 
-                onStartListening={startListening} 
-                onPauseListening={stopListening} 
-                onStopListening={stopListening} 
-                isListening={isListening} 
-                isPaused={false} 
-                disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} 
-              />
+                  onStartListening={startListening} 
+                  onStopListening={stopListening} 
+                  isListening={isListening} 
+                  disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} 
+                />
                 {isListening && !isAiResponding && !isAiSpeaking && !isAnalyzing && (
                   <p className="placeholder-text mic-icon-listening" style={{ textAlign: 'center', marginTop: '15px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
                     🎤 Écoute en cours... Parlez clairement dans un environnement calme et près de votre microphone.
@@ -412,7 +410,8 @@ function App() {
             <ResultsView 
               analysisResults={analysisResults}
               selectedScenarioTitle={selectedScenario?.title}
-              // conversation={conversation} // Retiré car ResultsView ne l'utilise plus directement
+              conversation={conversation} // Passer la conversation pour le téléchargement
+              userContext={userContext} // Passer le contexte utilisateur pour le téléchargement
               onNewSimulation={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}
               isAnalyzing={isAnalyzing}
             />

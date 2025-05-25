@@ -301,9 +301,28 @@ ul {
   background-color: var(--color-accent-hover);
 }
 
-/* Animation pour l'icône du microphone */
-.mic-icon-listening {
+/* Styles pour le bouton microphone dans SimulationControls */
+.mic-button {
+  background-color: var(--color-accent);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.mic-button:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+  transform: translateY(-2px);
+}
+
+.mic-button.listening {
+  background-color: #dc3545; /* Rouge quand écoute */
+}
+.mic-button.listening:hover:not(:disabled) {
+  background-color: #c82333; /* Rouge plus foncé au survol */
+}
+
+/* Animation pour l'icône du microphone (utilisée dans App.tsx et potentiellement dans SimulationControls) */
+.mic-icon-listening { /* Cette classe peut être appliquée à un span contenant l'icône */
   animation: pulse 1.5s infinite ease-in-out;
+  display: inline-block; /* Nécessaire pour que transform:scale fonctionne bien */
 }
 
 @keyframes pulse {
