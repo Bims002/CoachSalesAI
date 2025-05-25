@@ -159,8 +159,18 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentStep }) => {
         >
           CoachSales AI
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}> {/* flexGrow pour pousser le footer en bas */}
           {renderNavLinks()}
+        </div>
+        <div style={{ 
+          marginTop: 'auto', // Pousser en bas
+          paddingTop: '20px', // Espace au-dessus
+          borderTop: `1px solid var(--color-border)`, 
+          textAlign: 'center', 
+          fontSize: '0.85rem', 
+          color: 'var(--color-text-secondary)' 
+        }}>
+          &copy; {new Date().getFullYear()} CoachSales AI
         </div>
       </nav>
 

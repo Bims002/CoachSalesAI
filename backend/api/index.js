@@ -106,7 +106,7 @@ app.post('/api/chat', async (req, res) => {
     try {
       const ttsRequest = {
         input: { text: aiResponseText },
-        voice: { languageCode: 'fr-FR', name: 'fr-FR-Wavenet-D' }, // Voix exemple, à ajuster
+        voice: { languageCode: 'fr-FR', name: 'fr-FR-Neural2-A' }, // Nouvelle voix Neural2
         audioConfig: { audioEncoding: 'MP3' },
       };
       const [ttsResponse] = await ttsClient.synthesizeSpeech(ttsRequest);
