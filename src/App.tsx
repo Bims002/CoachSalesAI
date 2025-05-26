@@ -332,20 +332,28 @@ function App() {
   }, [browserSupportsSpeechRecognition, speechError]);
 
   useEffect(() => {
+    console.log(`App useEffect: currentUser=${!!currentUser}, currentStep=${currentStep}`);
     if (currentUser && currentStep === 'auth') {
+      console.log("App useEffect: Utilisateur connecté sur page auth, redirection vers scenarioSelection.");
       setCurrentStep('scenarioSelection'); 
     } else if (!currentUser && (currentStep === 'dashboard' || currentStep === 'history')) {
+      console.log(`App useEffect: Invité essayant d'accéder à ${currentStep}, redirection vers auth.`);
       setCurrentStep('auth'); 
     }
   }, [currentUser, currentStep, setCurrentStep]);
 
   const handleNavigation = (step: AppStep) => {
+    console.log(`handleNavigation: Reçu step=${step}, currentUser=${!!currentUser}, currentStep actuel=${currentStep}`);
     if (!currentUser && (step === 'dashboard' || step === 'history')) {
+      console.log("handleNavigation: Invité essayant d'accéder à une route protégée, redirection vers auth.");
       setCurrentStep('auth'); 
     } else { 
+      console.log(`handleNavigation: Mise à jour de currentStep vers ${step}.`);
       setCurrentStep(step);
     }
   };
+  
+  console.log(`App Rendu: currentStep=${currentStep}, currentUser=${!!currentUser}`);
 
   return (
     <div className="app-layout">

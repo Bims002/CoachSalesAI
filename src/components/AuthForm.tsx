@@ -129,7 +129,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
       
       {onNavigateToGuest && (
         <button 
-          onClick={() => onNavigateToGuest('scenarioSelection')} 
+          onClick={() => {
+            console.log("AuthForm: Bouton 'Continuer en tant qu'invité' cliqué. Appel de onNavigateToGuest('scenarioSelection').");
+            onNavigateToGuest('scenarioSelection');
+          }} 
           style={{ 
             width: '100%', 
             backgroundColor: 'var(--color-text-secondary)', 

@@ -18,17 +18,17 @@ const ContextInput: React.FC<ContextInputProps> = ({ onSubmitContext, selectedSc
   return (
     <div className="context-input-container app-section">
       <h2>Étape 2: Fournir un contexte pour la simulation</h2>
-      {selectedScenarioTitle && <p style={{ marginBottom: '15px' }}>Scénario choisi : <strong>{selectedScenarioTitle}</strong></p>}
+      {selectedScenarioTitle && <p style={{ marginBottom: '15px' }}>Scénario de base : <strong>{selectedScenarioTitle}</strong></p>}
       <form onSubmit={handleSubmit}>
         <label htmlFor="userContext" style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
-          Décrivez brièvement le produit/service que vous vendez, ou toute information pertinente pour le client IA :
+          Ajoutez des détails sur le comportement du client IA, ses objections spécifiques, ou le produit/service que vous souhaitez simuler :
         </label>
         <textarea
           id="userContext"
           value={context}
           onChange={(e) => setContext(e.target.value)}
           rows={5}
-          placeholder="Ex: Je vends une solution SaaS de gestion de projet pour les PME..."
+          placeholder="Ex: Le client est sceptique sur le prix, il a déjà eu une mauvaise expérience avec un produit similaire. Je vends des panneaux solaires..."
           required
           style={{ 
             width: '100%', 

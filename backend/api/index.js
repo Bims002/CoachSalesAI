@@ -56,15 +56,15 @@ app.post('/api/chat', async (req, res) => {
     // Si initialContext est fourni (ce sera le cas pour le premier tour), l'inclure.
     // Pour les tours suivants, initialContext ne sera pas renvoyé par le frontend, donc on ne l'inclut pas dans le system prompt.
     // L'historique de la conversation devrait suffire pour que Gemini garde le contexte.
-    let systemPromptText = `Tu es un simulateur de client pour un commercial. Ton rôle est de jouer le client décrit dans le scénario suivant :
+    let systemPromptText = `Tu es un simulateur de client pour un commercial. Ton rôle est de jouer le client décrit dans le scénario de base suivant :
     Scénario: ${scenario.title}
-    Description du client: ${scenario.description}
-    
-    Le commercial essaie de te vendre un produit ou service.`;
+    Description de base du client: ${scenario.description}.`;
 
     if (initialContext && conversationHistory.length === 0) { // Ajouter le contexte initial seulement au premier tour
-    systemPromptText += `\nLe commercial a fourni le contexte initial suivant sur ce qu'il essaie de te vendre : "${initialContext}". Tiens compte de ce contexte dans tes réponses.`;
+    systemPromptText += `\nL'utilisateur a ajouté les précisions suivantes sur ton rôle, ton comportement, ou le produit/service en jeu : "${initialContext}". Intègre impérativement ces détails dans ta simulation. Ces précisions de l'utilisateur sont prioritaires et doivent guider tes réponses et objections.`;
     }
+    
+    systemPromptText += `\n\nLe commercial va essayer de te vendre un produit ou service en lien avec le contexte fourni.`;
     
     // Ajout des instructions pour le contexte culturel africain/camerounais
     systemPromptText += `\n\nIMPORTANT : Adapte ton langage et tes réactions pour refléter un contexte client africain, spécifiquement camerounais. Cela signifie :
@@ -80,7 +80,7 @@ app.post('/api/chat', async (req, res) => {
     Ne révèle jamais que tu es une IA ou un simulateur. Joue ton rôle de client de manière crédible.`;
 
     const currentGeminiModel = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro-latest",
+      model: "gemini-2.5-pro-preview-05-06", // Mise à jour du modèle
       systemInstruction: {
         role: "system",
         parts: [{ text: systemPromptText }],
@@ -169,15 +169,15 @@ app.post('/api/analyze', async (req, res) => {
     
     Fournis ta réponse au format JSON, avec les champs suivants :
     {
-      "score": number, // Score global sur 100 (ex: 75)
+      "score": number, // Score global sur 100 (ex: 75/100)
       "conseils": string[], // Liste de conseils (ex: ["Améliorer l'écoute active", "Poser plus de questions ouvertes"])
       "ameliorations": string[] // Liste de points à améliorer (ex: ["Interruption du client", "Manque de clarté sur les bénéfices"])
     }
     Assure-toi que la réponse est un JSON valide et ne contient rien d'autre.`;
 
-    const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); // Utiliser le même modèle pour l'analyse
+    const geminiAnalysisModel = genAI.getGenerativeModel({ model: "gemini-2.5-pro-preview-05-06" }); // Mise à jour du modèle pour l'analyse
 
-    const result = await geminiModel.generateContent(analysisPrompt);
+    const result = await geminiAnalysisModel.generateContent(analysisPrompt);
     const analysisText = result.response.text();
 
     console.log("Réponse d'analyse de Gemini:", analysisText);
