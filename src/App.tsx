@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import ScenarioSelection from './components/ScenarioSelection';
 import SimulationControls from './components/SimulationControls';
-import ConversationView from './components/ConversationView';
+// import ConversationView from './components/ConversationView'; // Retiré de la vue simulation
 import ResultsView from './components/ResultsView';
 import HotjarTracking from './components/HotjarTracking';
 import HistoryView from './components/HistoryView';
@@ -11,11 +11,11 @@ import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import AuthForm from './components/AuthForm';
 import ContextInput from './components/ContextInput';
+import GlobalLoader from './components/GlobalLoader'; // Importer GlobalLoader
 import { useAuth } from './contexts/AuthContext';
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 import { db } from './firebase-config';
 import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
-// Les imports des images sont retirés, on utilisera des chemins publics
 
 export interface Scenario {
   id: string;
@@ -38,9 +38,8 @@ export interface Message {
 }
 
 const IS_MOBILE_DEVICE = /Mobi|Android/i.test(navigator.userAgent);
-const MAX_HISTORY_MESSAGES = 2; // Réduit à 2 messages (1 tour) pour tester
+const MAX_HISTORY_MESSAGES = 2; 
 
-// Déplacer AppStep ici pour qu'il soit accessible par AuthForm via NavbarProps
 export type AppStep = 'scenarioSelection' | 'contextInput' | 'simulation' | 'results' | 'history' | 'dashboard' | 'auth';
 
 function App() {
@@ -138,7 +137,7 @@ function App() {
   }, []);
 
   const speechRecognitionHook = useSpeechRecognition({ onResult: handleSpeechResultCb });
-  const { interimTranscript, isListening, startListening, stopListening, error: speechError, browserSupportsSpeechRecognition } = speechRecognitionHook;
+  const { isListening, startListening, stopListening, error: speechError, browserSupportsSpeechRecognition } = speechRecognitionHook;
 
   const playAiAudioCb = useCallback((audioContent: string) => {
     if (isListening) stopListening();
@@ -147,7 +146,6 @@ function App() {
     audio.play().catch(e => {
       console.error("Erreur audio.play():", e);
       setIsAiSpeaking(false);
-      // Ne redémarrer l'écoute que si on est TOUJOURS en simulation ET que l'IA n'est pas en train de répondre/analyser
       if (currentStep === 'simulation' && !isAiResponding && !isAnalyzing) {
          startListening();
       }
@@ -165,7 +163,7 @@ function App() {
          startListening();
       }
     };
-  }, [currentStep, isListening, startListening, stopListening, setIsAiSpeaking, isAiResponding, isAnalyzing]); // Ajout de isAiResponding et isAnalyzing aux dépendances
+  }, [currentStep, isListening, startListening, stopListening, setIsAiSpeaking, isAiResponding, isAnalyzing]);
 
   const getAiResponseCb = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
     if (!selectedScenario || !userMessageText.trim() || !userContext.trim()) { 
@@ -210,7 +208,7 @@ function App() {
         setConversation(prev => [...prev, aiMessage]);
         if (data.audioContent && !IS_MOBILE_DEVICE) {
           playAiAudioCb(data.audioContent);
-        } else if (!data.audioContent && currentStep === 'simulation') {
+        } else if (!data.audioContent && currentStep === 'simulation' && !isAnalyzing) { // Ne pas redémarrer si analyse en cours
           if (!isListening) startListening();
         }
       }
@@ -223,7 +221,7 @@ function App() {
       setIsAiResponding(false);
       setIsAiSpeaking(false);
     }
-  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, stopListening, setIsAiSpeaking, setConversation, setIsAiResponding, setApiError, userContext]);
+  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, stopListening, setIsAiSpeaking, setConversation, setIsAiResponding, setApiError, userContext, isAnalyzing]);
 
   const runAnalysis = useCallback(async () => {
     if (conversation.length === 0) {
@@ -339,15 +337,15 @@ function App() {
   }, [browserSupportsSpeechRecognition, speechError]);
 
   useEffect(() => {
-    console.log(`App useEffect: currentUser=${!!currentUser}, currentStep=${currentStep}`);
+    console.log(`App useEffect (Auth): currentUser=${!!currentUser}, currentStep=${currentStep}`);
     if (currentUser && currentStep === 'auth') {
-      console.log("App useEffect: Utilisateur connecté sur page auth, redirection vers scenarioSelection.");
+      console.log("App useEffect (Auth): Utilisateur connecté sur page auth, redirection vers scenarioSelection.");
       setCurrentStep('scenarioSelection'); 
     } else if (!currentUser && (currentStep === 'dashboard' || currentStep === 'history')) {
-      console.log(`App useEffect: Invité essayant d'accéder à ${currentStep}, redirection vers auth.`);
+      console.log(`App useEffect (Auth): Invité essayant d'accéder à ${currentStep}, redirection vers auth.`);
       setCurrentStep('auth'); 
     }
-  }, [currentUser, currentStep, setCurrentStep]);
+  }, [currentUser, currentStep]); // Retiré setCurrentStep des dépendances pour éviter boucle si setCurrentStep est appelé à l'intérieur
 
   const handleNavigation = (step: AppStep) => {
     console.log(`handleNavigation: Reçu step=${step}, currentUser=${!!currentUser}, currentStep actuel=${currentStep}`);
@@ -365,6 +363,7 @@ function App() {
   return (
     <div className="app-layout">
       <HotjarTracking />
+      <GlobalLoader isLoading={isAiResponding || isAnalyzing} /> {/* Prop message retirée */}
       <Navbar onNavigate={handleNavigation} currentStep={currentStep} />
       <main className="main-content">
         <div className="app-container"> 
@@ -395,7 +394,7 @@ function App() {
                     {isAiSpeaking && <span style={{fontSize: '2em', animation: 'pulse 1.5s infinite ease-in-out'}}>🔊</span>}
                     {!isAiSpeaking && conversation.filter(m => m.sender === 'ai').slice(-1)[0]?.text || "En attente de votre réponse..."}
                   </div>
-                  {isAiResponding && !isAiSpeaking && <div className="loader-ia" style={{marginTop: '10px'}}></div>}
+                  {/* Indicateur isAiResponding géré par GlobalLoader */}
                 </div>
                 <div className="simulation-panel">
                   <img src={currentUser?.photoURL || "/assets/img2.png"} alt="Vous" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=Vous')}/>
@@ -428,12 +427,7 @@ function App() {
               <button onClick={handleEndSimulation} style={{marginTop: '30px', backgroundColor: '#dc3545', width: 'auto', padding: '10px 20px'}} disabled={isAiResponding || isAiSpeaking || isAnalyzing}>
                 Terminer & Voir Résultats
               </button>
-              {isAnalyzing && (
-                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                    <div className="loader-ia"></div>
-                    <p className="placeholder-text" style={{color: 'var(--color-accent-hover)'}}>📊 Analyse en cours...</p>
-                  </div>
-              )}
+              {/* Indicateur isAnalyzing géré par GlobalLoader */}
             </div>
           )}
           {currentStep === 'results' && (
@@ -443,7 +437,7 @@ function App() {
               conversation={conversation} 
               userContext={userContext} 
               onNewSimulation={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}
-              isAnalyzing={isAnalyzing}
+              isAnalyzing={isAnalyzing} // Passé pour afficher le loader spécifique de ResultsView si besoin
             />
           )}
           {currentStep === 'history' && (
@@ -469,7 +463,7 @@ function App() {
           )}
           {currentStep === 'auth' && (
             <section id="auth-display" className="app-section">
-              <AuthForm onNavigateToGuest={handleNavigation} /> {/* Passer handleNavigation ici */}
+              <AuthForm onNavigateToGuest={handleNavigation} />
             </section>
           )}
         </div>

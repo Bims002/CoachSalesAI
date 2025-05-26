@@ -480,3 +480,41 @@ ul {
   padding: 0; /* Pas de padding supplémentaire */
   margin-top: 10px; /* Espace au-dessus des boutons */
 }
+
+/* Styles pour GlobalLoader */
+.global-loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* Fond semi-transparent */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000; /* Au-dessus de tout le reste */
+}
+
+.global-loader-content {
+  background-color: var(--color-bg-secondary);
+  padding: 30px 40px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+.global-spinner {
+  border: 5px solid var(--color-border); 
+  border-top: 5px solid var(--color-accent); 
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1.2s linear infinite;
+  margin: 0 auto 20px auto; /* Centrer et espacer du texte */
+}
+
+.global-loader-content p {
+  color: var(--color-text-primary);
+  font-size: 1.1rem;
+  margin: 0;
+}
