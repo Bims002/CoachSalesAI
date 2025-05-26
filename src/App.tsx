@@ -11,7 +11,7 @@ import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import AuthForm from './components/AuthForm';
 import ContextInput from './components/ContextInput';
-import GlobalLoader from './components/GlobalLoader'; // Importer GlobalLoader
+// import GlobalLoader from './components/GlobalLoader'; // GlobalLoader retiré
 import { useAuth } from './contexts/AuthContext';
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 import { db } from './firebase-config';
@@ -367,7 +367,7 @@ function App() {
   return (
     <div className="app-layout">
       <HotjarTracking />
-      <GlobalLoader isLoading={isAnalyzing} /> {/* GlobalLoader uniquement pour l'analyse */}
+      {/* GlobalLoader retiré */}
       <Navbar onNavigate={handleNavigation} currentStep={currentStep} />
       <main className="main-content">
         <div className="app-container"> 
@@ -444,7 +444,13 @@ function App() {
               <button onClick={handleEndSimulation} style={{marginTop: '30px', backgroundColor: '#dc3545', width: 'auto', padding: '10px 20px'}} disabled={isAiResponding || isAiSpeaking || isAnalyzing}>
                 Terminer & Voir Résultats
               </button>
-              {/* L'indicateur isAnalyzing est géré par GlobalLoader, pas besoin ici */}
+              {/* Indicateur pour isAnalyzing réintroduit ici */}
+              {isAnalyzing && (
+                  <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                    <div className="loader-ia"></div>
+                    <p className="placeholder-text" style={{color: 'var(--color-accent-hover)'}}>📊 Analyse en cours...</p>
+                  </div>
+              )}
             </div>
           )}
           {currentStep === 'results' && (
