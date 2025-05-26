@@ -363,7 +363,7 @@ function App() {
   return (
     <div className="app-layout">
       <HotjarTracking />
-      <GlobalLoader isLoading={isAiResponding || isAnalyzing} /> {/* Prop message retirée */}
+      <GlobalLoader isLoading={isAnalyzing} /> {/* GlobalLoader uniquement pour l'analyse */}
       <Navbar onNavigate={handleNavigation} currentStep={currentStep} />
       <main className="main-content">
         <div className="app-container"> 
@@ -392,9 +392,14 @@ function App() {
                   <h4>{selectedScenario.title}</h4>
                   <div className="last-message">
                     {isAiSpeaking && <span style={{fontSize: '2em', animation: 'pulse 1.5s infinite ease-in-out'}}>🔊</span>}
-                    {!isAiSpeaking && conversation.filter(m => m.sender === 'ai').slice(-1)[0]?.text || "En attente de votre réponse..."}
+                    {!isAiResponding && !isAiSpeaking && (conversation.filter(m => m.sender === 'ai').slice(-1)[0]?.text || "En attente de votre réponse...")}
                   </div>
-                  {/* Indicateur isAiResponding géré par GlobalLoader */}
+                  {isAiResponding && !isAiSpeaking && (
+                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1}}>
+                      <div className="loader-ia"></div>
+                      <p className="placeholder-text" style={{fontSize: '0.9rem', marginTop: '10px'}}>L'IA réfléchit...</p>
+                    </div>
+                  )}
                 </div>
                 <div className="simulation-panel">
                   <img src={currentUser?.photoURL || "/assets/img2.png"} alt="Vous" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=Vous')}/>
