@@ -391,15 +391,13 @@ function App() {
                   <img src="/assets/img1.png" alt="Client IA" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=IA')} />
                   <h4>{selectedScenario.title}</h4>
                   <div className="last-message">
-                    {isAiSpeaking && <span style={{fontSize: '2em', animation: 'pulse 1.5s infinite ease-in-out'}}>🔊</span>}
-                    {!isAiResponding && !isAiSpeaking && (conversation.filter(m => m.sender === 'ai').slice(-1)[0]?.text || "En attente de votre réponse...")}
+                    {/* L'indicateur isAiSpeaking reste ici car il est spécifique au panneau IA */}
+                    {isAiSpeaking && <span style={{fontSize: '2em', animation: 'pulse 1.5s infinite ease-in-out'}}>🔊</span>} 
+                    {/* Afficher le dernier message de l'IA si elle ne parle pas et ne réfléchit pas */}
+                    {!isAiSpeaking && !isAiResponding && (conversation.filter(m => m.sender === 'ai').slice(-1)[0]?.text || "En attente de votre réponse...")}
+                    {/* Si l'IA réfléchit, on peut afficher un message placeholder ici ou rien si l'indicateur est ailleurs */}
+                    {isAiResponding && !isAiSpeaking && <p className="placeholder-text" style={{fontStyle: 'italic'}}>...</p>}
                   </div>
-                  {isAiResponding && !isAiSpeaking && (
-                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1}}>
-                      <div className="loader-ia"></div>
-                      <p className="placeholder-text" style={{fontSize: '0.9rem', marginTop: '10px'}}>L'IA réfléchit...</p>
-                    </div>
-                  )}
                 </div>
                 <div className="simulation-panel">
                   <img src={currentUser?.photoURL || "/assets/img2.png"} alt="Vous" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=Vous')}/>
@@ -427,12 +425,22 @@ function App() {
                     Parlez clairement dans un environnement calme...
                   </p>
                 )}
+                {/* Indicateurs textuels pour IA répond/parle, sous les contrôles */}
+                {isAiResponding && !isAiSpeaking && !isAnalyzing && (
+                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                    <div className="loader-ia"></div> {/* Spinner simple */}
+                    <p className="placeholder-text">🤖 L'IA réfléchit...</p>
+                  </div>
+                )}
+                 {/* L'indicateur isAiSpeaking est déjà dans le panneau IA, on peut le retirer d'ici si doublon */}
+                {/* {isAiSpeaking && !isAnalyzing && <p className="placeholder-text" style={{textAlign: 'center', marginTop: '10px', color: 'var(--color-accent)'}}>🔊 L'IA parle...</p>} */}
+
               </div>
               
               <button onClick={handleEndSimulation} style={{marginTop: '30px', backgroundColor: '#dc3545', width: 'auto', padding: '10px 20px'}} disabled={isAiResponding || isAiSpeaking || isAnalyzing}>
                 Terminer & Voir Résultats
               </button>
-              {/* Indicateur isAnalyzing géré par GlobalLoader */}
+              {/* L'indicateur isAnalyzing est géré par GlobalLoader, pas besoin ici */}
             </div>
           )}
           {currentStep === 'results' && (
