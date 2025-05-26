@@ -354,24 +354,30 @@ function App() {
 
   useEffect(() => {
     if (currentUser && currentStep === 'auth') {
-      // Si l'utilisateur est connecté et qu'on est sur la page auth, rediriger vers scenarioSelection
+      // Si l'utilisateur est connecté et sur la page 'auth', le rediriger.
       setCurrentStep('scenarioSelection');
-    } else if (!currentUser && currentStep !== 'auth') {
-      // Si l'utilisateur n'est pas connecté et qu'on n'est PAS sur la page auth,
-      // (par exemple, il essaie d'accéder à dashboard ou history directement via URL)
-      // alors rediriger vers la page auth.
-      setCurrentStep('auth');
+    } else if (!currentUser) {
+      // Si l'utilisateur n'est PAS connecté
+      if (currentStep === 'dashboard' || currentStep === 'history') {
+        // Et qu'il essaie d'accéder à des routes protégées, rediriger vers 'auth'
+        setCurrentStep('auth');
+      }
+      // Sinon (s'il est sur scenarioSelection, contextInput, simulation, results, ou auth), ne rien faire,
+      // permettant l'accès invité à ces étapes.
     }
-    // Si l'utilisateur est connecté et n'est pas sur 'auth', ou
-    // si l'utilisateur n'est pas connecté et est déjà sur 'auth', ne rien faire.
+    // Si l'utilisateur est connecté et n'est pas sur 'auth', ne rien faire.
   }, [currentUser, currentStep, setCurrentStep]);
 
 
-  // Logique de navigation pour la Navbar, en s'assurant que les routes protégées le sont
+  // Logique de navigation pour la Navbar
   const handleNavigation = (step: AppStep) => {
     if (!currentUser && (step === 'dashboard' || step === 'history')) {
-      setCurrentStep('auth'); // Rediriger vers l'auth si non connecté et essaie d'accéder à une route protégée
-    } else {
+      setCurrentStep('auth'); 
+    } else if (!currentUser && step === 'scenarioSelection' && currentStep === 'auth') {
+      // Si invité sur la page auth et clique sur "Nouvelle Simulation" (ou titre)
+      setCurrentStep('scenarioSelection');
+    }
+    else {
       setCurrentStep(step);
     }
   };
@@ -379,9 +385,9 @@ function App() {
   return (
     <div className="app-layout">
       <HotjarTracking />
-      <Navbar onNavigate={handleNavigation} currentStep={currentStep} /> {/* Passer currentStep */}
+      <Navbar onNavigate={handleNavigation} currentStep={currentStep} />
       <main className="main-content">
-        <div className="app-container"> {/* Conteneur pour centrer le contenu des sections */}
+        <div className="app-container"> 
           {apiError && <p style={{color: 'orange', textAlign: 'center', marginBottom: '20px'}}>Erreur API: {apiError}</p>}
           {speechError && <p style={{color: 'red', textAlign: 'center', marginBottom: '20px'}}>{speechError}</p>}
           {IS_MOBILE_DEVICE && currentStep === 'simulation' && !isAnalyzing && 
