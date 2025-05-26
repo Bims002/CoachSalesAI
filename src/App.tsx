@@ -344,7 +344,7 @@ function App() {
   const handleNavigation = (step: AppStep) => {
     if (!currentUser && (step === 'dashboard' || step === 'history')) {
       setCurrentStep('auth'); 
-    } else { // Permettre la navigation vers scenarioSelection pour les invités depuis la page auth
+    } else { 
       setCurrentStep(step);
     }
   };
