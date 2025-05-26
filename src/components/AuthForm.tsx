@@ -8,12 +8,19 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 
-const AuthForm: React.FC = () => {
+// AppStep devrait idéalement être importé d'un fichier de types partagé ou de App.tsx
+type AppStep = 'scenarioSelection' | 'contextInput' | 'simulation' | 'results' | 'history' | 'dashboard' | 'auth';
+
+interface AuthFormProps {
+  onNavigateToGuest?: (step: AppStep) => void; // Prop pour la navigation invité
+}
+
+const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null); // Pour les messages de succès (ex: email de réinitialisation envoyé)
+  const [message, setMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +32,6 @@ const AuthForm: React.FC = () => {
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-      // La redirection ou la mise à jour de l'état de l'utilisateur sera gérée par AuthContext
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') {
         setError("Cette adresse e-mail est déjà utilisée. Essayez de vous connecter ou utilisez une autre adresse.");
@@ -44,7 +50,6 @@ const AuthForm: React.FC = () => {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      // La redirection ou la mise à jour de l'état de l'utilisateur sera gérée par AuthContext
     } catch (err: any) {
       setError(err.message);
     }
@@ -118,9 +123,23 @@ const AuthForm: React.FC = () => {
       <button onClick={handleGoogleSignIn} style={{ width: '100%', backgroundColor: '#4285F4', marginBottom: '15px' }}>
         Continuer avec Google
       </button>
-      <button onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(null); }} style={{ width: '100%', backgroundColor: 'transparent', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' }}>
+      <button onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(null); }} style={{ width: '100%', backgroundColor: 'transparent', color: 'var(--color-accent)', border: '1px solid var(--color-accent)', marginBottom: '15px' }}>
         {isLogin ? 'Pas encore de compte ? S\'inscrire' : 'Déjà un compte ? Se connecter'}
       </button>
+      
+      {onNavigateToGuest && (
+        <button 
+          onClick={() => onNavigateToGuest('scenarioSelection')} 
+          style={{ 
+            width: '100%', 
+            backgroundColor: 'var(--color-text-secondary)', 
+            color: 'var(--color-bg)', 
+            marginTop: '10px' 
+          }}
+        >
+          Continuer en tant qu'invité
+        </button>
+      )}
     </div>
   );
 };

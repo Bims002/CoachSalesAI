@@ -40,14 +40,15 @@ export interface Message {
 const IS_MOBILE_DEVICE = /Mobi|Android/i.test(navigator.userAgent);
 const MAX_HISTORY_MESSAGES = 2; // Réduit à 2 messages (1 tour) pour tester
 
-function App() {
-  type AppStep = 'scenarioSelection' | 'contextInput' | 'simulation' | 'results' | 'history' | 'dashboard' | 'auth'; // Ajouter 'contextInput'
+// Déplacer AppStep ici pour qu'il soit accessible par AuthForm via NavbarProps
+export type AppStep = 'scenarioSelection' | 'contextInput' | 'simulation' | 'results' | 'history' | 'dashboard' | 'auth';
 
+function App() {
   const { currentUser } = useAuth();
   const [currentStep, setCurrentStep] = useState<AppStep>(currentUser ? 'scenarioSelection' : 'auth');
   const [scenarios] = useState<Scenario[]>(scenariosData);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
-  const [userContext, setUserContext] = useState<string>(''); // Nouvel état pour le contexte utilisateur
+  const [userContext, setUserContext] = useState<string>(''); 
   const [conversation, setConversation] = useState<Message[]>([]);
   const [isAiResponding, setIsAiResponding] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -55,12 +56,11 @@ function App() {
   const [lastProcessedUserMessageId, setLastProcessedUserMessageId] = useState<string | null>(null);
   const [analysisResults, setAnalysisResults] = useState<any | null>(null); 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [simulationTime, setSimulationTime] = useState(0); // État pour le timer
-  const [timerIntervalId, setTimerIntervalId] = useState<NodeJS.Timeout | null>(null); // Pour stocker l'ID de l'intervalle
+  const [simulationTime, setSimulationTime] = useState(0); 
+  const [timerIntervalId, setTimerIntervalId] = useState<NodeJS.Timeout | null>(null); 
 
   const [history, setHistory] = useState<SimulationRecord[]>([]);
 
-  // Charger l'historique depuis Firestore ou localStorage
   useEffect(() => {
     const fetchHistory = async () => {
       if (currentUser) {
@@ -73,7 +73,6 @@ function App() {
             const data = doc.data();
             firestoreHistory.push({ 
               id: doc.id, 
-              // Assurer la conversion correcte de Timestamp en string si nécessaire
               date: data.date instanceof Timestamp ? data.date.toDate().toLocaleString() : new Date(data.date).toLocaleString(), 
               scenarioTitle: data.scenarioTitle,
               score: data.score,
@@ -83,10 +82,8 @@ function App() {
           setHistory(firestoreHistory);
         } catch (error) {
           console.error("Erreur lors de la récupération de l'historique Firestore:", error);
-          // Fallback ou gestion d'erreur
         }
       } else {
-        // Pour les utilisateurs non connectés, on pourrait utiliser localStorage ou ne rien charger
         const storedHistory = localStorage.getItem('coachSalesLocalHistory');
         if (storedHistory) {
           setHistory(JSON.parse(storedHistory));
@@ -96,31 +93,24 @@ function App() {
       }
     };
     fetchHistory();
-  }, [currentUser]); // Re-fetch si l'utilisateur change
+  }, [currentUser]); 
   
-  // Fonction pour ajouter une simulation à l'historique (Firestore ou localStorage)
   const addToHistory = async (recordData: Omit<SimulationRecord, 'id' | 'date'>) => {
     const newRecord: SimulationRecord = {
       ...recordData,
-      id: Date.now().toString(), // ID temporaire, Firestore générera le sien
-      date: new Date().toLocaleString(), // Date en string pour la simplicité, Firestore utilisera serverTimestamp
+      id: Date.now().toString(), 
+      date: new Date().toLocaleString(), 
     };
 
     if (currentUser) {
       try {
         const userHistoryCollection = collection(db, `users/${currentUser.uid}/simulations`);
-        // Utiliser serverTimestamp pour la date pour un tri correct côté serveur
         await addDoc(userHistoryCollection, { ...recordData, date: serverTimestamp() });
-        // Re-fetch l'historique pour mettre à jour l'UI avec l'enregistrement de Firestore (incluant l'ID et la date serveur)
-        // Ou ajouter localement et espérer la synchro, mais re-fetch est plus sûr pour l'ID et la date.
-        // Pour l'instant, on ajoute localement pour la réactivité, puis on re-fetch au prochain chargement.
         setHistory(prevHistory => [newRecord, ...prevHistory].slice(0, 20));
-
       } catch (error) {
         console.error("Erreur lors de l'ajout à l'historique Firestore:", error);
       }
     } else {
-      // Logique localStorage pour utilisateurs non connectés
       setHistory(prevHistory => {
         const updatedHistory = [newRecord, ...prevHistory].slice(0, 20);
         localStorage.setItem('coachSalesLocalHistory', JSON.stringify(updatedHistory));
@@ -129,7 +119,6 @@ function App() {
     }
   };
   
-  // Mettre à jour l'historique après analyse réussie
   useEffect(() => {
     if (analysisResults && selectedScenario) {
       const recordData: Omit<SimulationRecord, 'id' | 'date'> = {
@@ -139,7 +128,7 @@ function App() {
       };
       addToHistory(recordData);
     }
-  }, [analysisResults, selectedScenario, currentUser]); // Ajouter currentUser aux dépendances
+  }, [analysisResults, selectedScenario, currentUser]); 
 
   const handleSpeechResultCb = useCallback((finalTranscript: string) => {
     const trimmedTranscript = finalTranscript.trim();
@@ -172,7 +161,7 @@ function App() {
   }, [currentStep, isListening, startListening, stopListening, setIsAiSpeaking]);
 
   const getAiResponseCb = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
-    if (!selectedScenario || !userMessageText.trim() || !userContext.trim()) { // Vérifier aussi userContext
+    if (!selectedScenario || !userMessageText.trim() || !userContext.trim()) { 
       console.warn("Scénario, contexte ou message utilisateur vide, appel API annulé.");
       setIsAiResponding(false);
       return;
@@ -184,7 +173,7 @@ function App() {
       .slice(0, -1) 
       .slice(-MAX_HISTORY_MESSAGES * 2) 
       .map(msg => ({
-        text: msg.text, // Garder la structure simple pour le backend actuel
+        text: msg.text, 
         sender: msg.sender,
       }));
 
@@ -196,17 +185,16 @@ function App() {
           userTranscript: userMessageText, 
           scenario: selectedScenario, 
           conversationHistory: historyForApi,
-          initialContext: userContext // Envoyer le contexte initial
+          initialContext: userContext 
         }),
       });
       setIsAiResponding(false);
       if (!response.ok) {
-        // Essayer de parser comme JSON si possible, sinon utiliser le statut texte
         let errorResponseMessage = `Erreur HTTP: ${response.status} ${response.statusText}`;
         try {
             const errorData = await response.json();
             errorResponseMessage = errorData.error || errorResponseMessage;
-        } catch (e) { /* Ignorer si la réponse n'est pas JSON */ }
+        } catch (e) { /* Ignorer */ }
         throw new Error(errorResponseMessage);
       }
       const data = await response.json();
@@ -228,42 +216,35 @@ function App() {
       setIsAiResponding(false);
       setIsAiSpeaking(false);
     }
-  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, stopListening, setIsAiSpeaking, setConversation, setIsAiResponding, setApiError]);
+  }, [selectedScenario, currentStep, playAiAudioCb, startListening, isListening, stopListening, setIsAiSpeaking, setConversation, setIsAiResponding, setApiError, userContext]);
 
-  // Fonction pour lancer l'analyse de la conversation
   const runAnalysis = useCallback(async () => {
     if (conversation.length === 0) {
       console.warn("Aucune conversation à analyser.");
       setAnalysisResults(null);
-      setCurrentStep('results'); // Passer quand même aux résultats, mais vides
+      setCurrentStep('results'); 
       return;
     }
-
     setIsAnalyzing(true);
-    setApiError(null); // Réinitialiser les erreurs API pour l'analyse
-
+    setApiError(null); 
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation }), // Envoyer la conversation complète
+        body: JSON.stringify({ conversation }), 
       });
-
       setIsAnalyzing(false);
-
       if (!response.ok) {
         let errorResponseMessage = `Erreur HTTP lors de l'analyse: ${response.status} ${response.statusText}`;
         try {
             const errorData = await response.json();
             errorResponseMessage = errorData.error || errorResponseMessage;
-        } catch (e) { /* Ignorer si la réponse n'est pas JSON */ }
+        } catch (e) { /* Ignorer */ }
         throw new Error(errorResponseMessage);
       }
-
       const data = await response.json();
-      setAnalysisResults(data); // Stocker les résultats
-      setCurrentStep('results'); // Passer à l'étape des résultats
-
+      setAnalysisResults(data); 
+      setCurrentStep('results'); 
     } catch (error) {
       console.error("Erreur lors de l'analyse:", error);
       let errMsg = "Une erreur est survenue lors de l'analyse de la simulation.";
@@ -271,15 +252,15 @@ function App() {
       else if (typeof error === 'string') errMsg = error;
       setApiError(errMsg);
       setIsAnalyzing(false);
-      setAnalysisResults(null); // S'assurer que les anciens résultats sont effacés
-      setCurrentStep('results'); // Passer quand même aux résultats pour afficher l'erreur
+      setAnalysisResults(null); 
+      setCurrentStep('results'); 
     }
   }, [conversation, setAnalysisResults, setCurrentStep, setIsAnalyzing, setApiError]);
 
   useEffect(() => {
     if (conversation.length > 0) {
       const lastMessage = conversation[conversation.length - 1];
-      if (lastMessage.sender === 'user' && lastMessage.id !== lastProcessedUserMessageId && !isAiResponding && !isAiSpeaking && !isAnalyzing) { // Ne pas appeler si l'IA réfléchit/parle ou si l'analyse est en cours
+      if (lastMessage.sender === 'user' && lastMessage.id !== lastProcessedUserMessageId && !isAiResponding && !isAiSpeaking && !isAnalyzing) { 
         setLastProcessedUserMessageId(lastMessage.id);
         getAiResponseCb(lastMessage.text, conversation);
       }
@@ -289,9 +270,9 @@ function App() {
   const handleSelectScenario = (scenario: Scenario) => {
     setSelectedScenario(scenario);
     setConversation([]);
-    setUserContext(''); // Réinitialiser le contexte
+    setUserContext(''); 
     if (isListening) stopListening();
-    setCurrentStep('contextInput'); // Aller à la saisie du contexte
+    setCurrentStep('contextInput'); 
     setLastProcessedUserMessageId(null);
     setAnalysisResults(null);
     setApiError(null);
@@ -302,11 +283,10 @@ function App() {
     setConversation([]); 
     setSimulationTime(0); 
     setCurrentStep('simulation'); 
-    // Le timer ne démarre plus ici
   };
 
   const startSimulationTimer = () => {
-    if (!timerIntervalId && currentStep === 'simulation') { // Démarrer seulement si pas déjà démarré et si on est en simulation
+    if (!timerIntervalId && currentStep === 'simulation') { 
       const newIntervalId = setInterval(() => {
         setSimulationTime(prevTime => prevTime + 1);
       }, 1000);
@@ -315,8 +295,8 @@ function App() {
   };
 
   const customStartListening = () => {
-    startListening(); // Fonction originale du hook
-    startSimulationTimer(); // Démarrer notre timer
+    startListening(); 
+    startSimulationTimer(); 
   };
 
   const toggleListening = () => {
@@ -324,20 +304,19 @@ function App() {
     if (isListening) {
       stopListening();
     } else {
-      customStartListening(); // Utiliser notre fonction personnalisée
+      customStartListening(); 
     }
   };
 
   const handleEndSimulation = () => {
     if (isListening) stopListening();
     if (timerIntervalId) {
-      clearInterval(timerIntervalId); // Arrêter le timer
+      clearInterval(timerIntervalId); 
       setTimerIntervalId(null);
     }
     runAnalysis(); 
   };
   
-  // Nettoyer l'intervalle du timer lorsque le composant est démonté ou lorsque la simulation n'est plus l'étape active
   useEffect(() => {
     return () => {
       if (timerIntervalId) {
@@ -354,30 +333,18 @@ function App() {
 
   useEffect(() => {
     if (currentUser && currentStep === 'auth') {
-      // Si l'utilisateur est connecté et sur la page 'auth', le rediriger.
       setCurrentStep('scenarioSelection');
     } else if (!currentUser) {
-      // Si l'utilisateur n'est PAS connecté
       if (currentStep === 'dashboard' || currentStep === 'history') {
-        // Et qu'il essaie d'accéder à des routes protégées, rediriger vers 'auth'
         setCurrentStep('auth');
       }
-      // Sinon (s'il est sur scenarioSelection, contextInput, simulation, results, ou auth), ne rien faire,
-      // permettant l'accès invité à ces étapes.
     }
-    // Si l'utilisateur est connecté et n'est pas sur 'auth', ne rien faire.
   }, [currentUser, currentStep, setCurrentStep]);
 
-
-  // Logique de navigation pour la Navbar
   const handleNavigation = (step: AppStep) => {
     if (!currentUser && (step === 'dashboard' || step === 'history')) {
       setCurrentStep('auth'); 
-    } else if (!currentUser && step === 'scenarioSelection' && currentStep === 'auth') {
-      // Si invité sur la page auth et clique sur "Nouvelle Simulation" (ou titre)
-      setCurrentStep('scenarioSelection');
-    }
-    else {
+    } else { // Permettre la navigation vers scenarioSelection pour les invités depuis la page auth
       setCurrentStep(step);
     }
   };
@@ -406,9 +373,8 @@ function App() {
             <ContextInput onSubmitContext={handleSubmitContext} selectedScenarioTitle={selectedScenario.title} />
           )}
           {currentStep === 'simulation' && selectedScenario && userContext && (
-            <div className="simulation-interface app-section"> {/* Utiliser app-section pour le style de fond/bordure global */}
+            <div className="simulation-interface app-section"> 
               <div className="simulation-panels-container">
-                {/* Panneau IA */}
                 <div className="simulation-panel">
                   <img src="/assets/img1.png" alt="Client IA" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=IA')} />
                   <h4>{selectedScenario.title}</h4>
@@ -418,7 +384,6 @@ function App() {
                   </div>
                   {isAiResponding && !isAiSpeaking && <div className="loader-ia" style={{marginTop: '10px'}}></div>}
                 </div>
-                {/* Panneau Utilisateur */}
                 <div className="simulation-panel">
                   <img src={currentUser?.photoURL || "/assets/img2.png"} alt="Vous" className="avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/100?text=Vous')}/>
                   <h4>Vous {currentUser?.displayName ? `(${currentUser.displayName})` : ''}</h4>
@@ -433,10 +398,9 @@ function App() {
                 {Math.floor(simulationTime / 60).toString().padStart(2, '0')}:{(simulationTime % 60).toString().padStart(2, '0')}
               </div>
 
-              {/* Section des contrôles de simulation */}
               <div id="simulation-controls" className="app-section" style={{background: 'transparent', border: 'none', boxShadow: 'none', padding: 0}}>
                 <SimulationControls 
-                  onStartListening={customStartListening} // Utiliser customStartListening
+                  onStartListening={customStartListening} 
                   onStopListening={stopListening} 
                   isListening={isListening} 
                   disabled={!browserSupportsSpeechRecognition || isAiResponding || isAiSpeaking || isAnalyzing} 
@@ -448,7 +412,6 @@ function App() {
                 )}
               </div>
               
-              {/* Bouton Terminer la simulation */}
               <button onClick={handleEndSimulation} style={{marginTop: '30px', backgroundColor: '#dc3545', width: 'auto', padding: '10px 20px'}} disabled={isAiResponding || isAiSpeaking || isAnalyzing}>
                 Terminer & Voir Résultats
               </button>
@@ -464,8 +427,8 @@ function App() {
             <ResultsView 
               analysisResults={analysisResults}
               selectedScenarioTitle={selectedScenario?.title}
-              conversation={conversation} // Passer la conversation pour le téléchargement
-              userContext={userContext} // Passer le contexte utilisateur pour le téléchargement
+              conversation={conversation} 
+              userContext={userContext} 
               onNewSimulation={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}
               isAnalyzing={isAnalyzing}
             />
@@ -493,11 +456,10 @@ function App() {
           )}
           {currentStep === 'auth' && (
             <section id="auth-display" className="app-section">
-              <AuthForm />
+              <AuthForm onNavigateToGuest={handleNavigation} /> {/* Passer handleNavigation ici */}
             </section>
           )}
         </div>
-        {/* Footer retiré d'ici car il est maintenant dans la sidebar */}
       </main>
     </div>
   );
