@@ -368,8 +368,11 @@ function App() {
     <div className="app-layout">
       <HotjarTracking />
       {/* GlobalLoader retiré */}
-      <Navbar onNavigate={handleNavigation} currentStep={currentStep} />
-      <main className="main-content">
+      {currentStep !== 'auth' && <Navbar onNavigate={handleNavigation} currentStep={currentStep} />}
+      <main 
+        className="main-content"
+        style={{ marginLeft: currentStep !== 'auth' ? '260px' : '0' }}
+      >
         <div className="app-container"> 
           {apiError && <p style={{color: 'orange', textAlign: 'center', marginBottom: '20px'}}>Erreur API: {apiError}</p>}
           {speechError && <p style={{color: 'red', textAlign: 'center', marginBottom: '20px'}}>{speechError}</p>}
