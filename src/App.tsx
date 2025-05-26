@@ -281,6 +281,8 @@ function App() {
     setLastProcessedUserMessageId(null);
     setAnalysisResults(null);
     setApiError(null);
+    setIsAnalyzing(false); // Réinitialiser isAnalyzing
+    setIsAiResponding(false); // Réinitialiser isAiResponding
   };
 
   const handleSubmitContext = (context: string) => {
@@ -288,6 +290,8 @@ function App() {
     setConversation([]); 
     setSimulationTime(0); 
     setCurrentStep('simulation'); 
+    setIsAnalyzing(false); // Réinitialiser isAnalyzing
+    setIsAiResponding(false); // Réinitialiser isAiResponding
   };
 
   const startSimulationTimer = () => {
@@ -337,28 +341,28 @@ function App() {
   }, [browserSupportsSpeechRecognition, speechError]);
 
   useEffect(() => {
-    console.log(`App useEffect (Auth): currentUser=${!!currentUser}, currentStep=${currentStep}`);
+    // console.log(`App useEffect (Auth): currentUser=${!!currentUser}, currentStep=${currentStep}`); // Log retiré
     if (currentUser && currentStep === 'auth') {
-      console.log("App useEffect (Auth): Utilisateur connecté sur page auth, redirection vers scenarioSelection.");
+      // console.log("App useEffect (Auth): Utilisateur connecté sur page auth, redirection vers scenarioSelection."); // Log retiré
       setCurrentStep('scenarioSelection'); 
     } else if (!currentUser && (currentStep === 'dashboard' || currentStep === 'history')) {
-      console.log(`App useEffect (Auth): Invité essayant d'accéder à ${currentStep}, redirection vers auth.`);
+      // console.log(`App useEffect (Auth): Invité essayant d'accéder à ${currentStep}, redirection vers auth.`); // Log retiré
       setCurrentStep('auth'); 
     }
-  }, [currentUser, currentStep]); // Retiré setCurrentStep des dépendances pour éviter boucle si setCurrentStep est appelé à l'intérieur
+  }, [currentUser, currentStep]);
 
   const handleNavigation = (step: AppStep) => {
-    console.log(`handleNavigation: Reçu step=${step}, currentUser=${!!currentUser}, currentStep actuel=${currentStep}`);
+    // console.log(`handleNavigation: Reçu step=${step}, currentUser=${!!currentUser}, currentStep actuel=${currentStep}`); // Log retiré
     if (!currentUser && (step === 'dashboard' || step === 'history')) {
-      console.log("handleNavigation: Invité essayant d'accéder à une route protégée, redirection vers auth.");
+      // console.log("handleNavigation: Invité essayant d'accéder à une route protégée, redirection vers auth."); // Log retiré
       setCurrentStep('auth'); 
     } else { 
-      console.log(`handleNavigation: Mise à jour de currentStep vers ${step}.`);
+      // console.log(`handleNavigation: Mise à jour de currentStep vers ${step}.`); // Log retiré
       setCurrentStep(step);
     }
   };
   
-  console.log(`App Rendu: currentStep=${currentStep}, currentUser=${!!currentUser}`);
+  // console.log(`App Rendu: currentStep=${currentStep}, currentUser=${!!currentUser}`); // Log retiré
 
   return (
     <div className="app-layout">
@@ -449,7 +453,14 @@ function App() {
               selectedScenarioTitle={selectedScenario?.title}
               conversation={conversation} 
               userContext={userContext} 
-              onNewSimulation={() => { setCurrentStep('scenarioSelection'); setLastProcessedUserMessageId(null); setAnalysisResults(null); setApiError(null); }}
+              onNewSimulation={() => { 
+                setCurrentStep('scenarioSelection'); 
+                setLastProcessedUserMessageId(null); 
+                setAnalysisResults(null); 
+                setApiError(null); 
+                setIsAnalyzing(false); // Réinitialiser isAnalyzing
+                setIsAiResponding(false); // Réinitialiser isAiResponding
+              }}
               isAnalyzing={isAnalyzing} // Passé pour afficher le loader spécifique de ResultsView si besoin
             />
           )}
