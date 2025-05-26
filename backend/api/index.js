@@ -1,50 +1,38 @@
 const express = require('express');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { TextToSpeechClient } = require('@google-cloud/text-to-speech'); // Ajout du client TTS
+const { TextToSpeechClient } = require('@google-cloud/text-to-speech'); 
 const app = express();
 
-// Middleware pour parser le JSON dans les requêtes (avec une limite de taille augmentée)
-app.use(express.json({ limit: '5mb' })); // Augmenter la limite à 5MB
+app.use(express.json({ limit: '5mb' })); 
 
-// Initialisation des clients API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Initialisation du client Text-to-Speech
 let ttsClientOptions = {};
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   try {
-    // Si la variable d'env contient le JSON directement (cas de Vercel)
     const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
     ttsClientOptions = { credentials };
     console.log("Credentials Google Cloud parsées depuis la variable d'environnement.");
   } catch (e) {
-    // Si ce n'est pas un JSON valide, on suppose que c'est un chemin de fichier (pour tests locaux par ex.)
-    // Dans ce cas, la bibliothèque cliente devrait le gérer automatiquement si la variable est un chemin.
-    // Mais pour Vercel, on s'attend à un JSON. Si le parsing échoue, c'est un problème de config.
     console.error("Erreur lors du parsing de GOOGLE_APPLICATION_CREDENTIALS. Assurez-vous qu'elle contient le JSON valide de la clé de service ou un chemin vers le fichier de clé.", e);
-    // On pourrait choisir de ne pas initialiser ttsClient ou de le laisser essayer avec l'auth par défaut.
-    // Pour l'instant, on logue l'erreur et on laisse la bibliothèque tenter sa chance.
   }
 } else {
   console.warn("Variable d'environnement GOOGLE_APPLICATION_CREDENTIALS non définie. L'API Text-to-Speech pourrait ne pas fonctionner.");
 }
 const ttsClient = new TextToSpeechClient(ttsClientOptions);
 
-// Route de test
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend CoachSales AI fonctionne !' });
 });
 
-// Route pour la simulation de chat
 app.post('/api/chat', async (req, res) => {
   try {
-    // Déstructurer toutes les variables attendues une seule fois
     const { userTranscript, scenario, conversationHistory = [], initialContext } = req.body;
 
-    if (!userTranscript || !scenario ) { // initialContext est maintenant optionnel au niveau de la validation de base ici
+    if (!userTranscript || !scenario ) { 
       return res.status(400).json({ error: 'La transcription de l\'utilisateur et le scénario sont requis.' });
     }
-    if (scenario && !initialContext && conversationHistory.length === 0) { // Si c'est le début d'une nouvelle simulation (pas d'historique) et que le contexte est manquant
+    if (scenario && !initialContext && conversationHistory.length === 0) { 
         return res.status(400).json({ error: 'Le contexte initial est requis pour démarrer une nouvelle simulation.' });
     }
     if (!process.env.GEMINI_API_KEY) {
@@ -52,22 +40,21 @@ app.post('/api/chat', async (req, res) => {
       return res.status(500).json({ error: 'Configuration du serveur incomplète (clé API manquante).' });
     }
 
-    // Construire l'instruction système
     let systemPromptText = `Tu es un simulateur de client pour un commercial. Ton rôle est de jouer le client décrit dans le scénario de base suivant :
     Scénario: ${scenario.title}
     Description de base du client: ${scenario.description}.`;
 
-    if (initialContext) { // Toujours ajouter le contexte initial s'il est fourni
+    if (initialContext) { 
     systemPromptText += `\nL'utilisateur a ajouté les précisions suivantes sur ton rôle, ton comportement, ou le produit/service en jeu : "${initialContext}". Intègre impérativement ces détails dans ta simulation. Ces précisions de l'utilisateur sont prioritaires et doivent guider tes réponses et objections.`;
     }
     
     systemPromptText += `\n\nLe commercial va essayer de te vendre un produit ou service en lien avec le contexte fourni.`;
     
     systemPromptText += `\n\nIMPORTANT : Adapte ton langage et tes réactions pour refléter un contexte client africain, spécifiquement camerounais. Cela signifie :
-    - Utilise un français clair et accessible. Tu peux intégrer des expressions locales camerounaises si cela semble naturel et pertinent, mais sans excès ni caricature.
+    - Utilise un français standard, clair, respectueux et accessible. Évite d'utiliser des expressions idiomatiques locales ou du jargon spécifique, afin de maintenir un ton professionnel et largement compréhensible.
     - Montre une sensibilité aux relations interpersonnelles, à la confiance et au respect mutuel.
     - Tes objections ou questions peuvent refléter des réalités économiques locales, des habitudes de consommation, ou une préférence pour des solutions éprouvées et fiables.
-    - Évite un ton trop direct, trop formel ou des références culturelles purement occidentales qui ne seraient pas pertinentes. L'approche peut être plus indirecte et valoriser le contact humain.
+    - Évite un ton trop direct ou des références culturelles purement occidentales qui ne seraient pas pertinentes. L'approche peut être plus indirecte et valoriser le contact humain.
     - Fais preuve de patience et d'écoute.`;
     
     systemPromptText += `\n\nInteragis naturellement. Pose des questions, exprime des objections ou de l'intérêt en accord avec ton rôle de client et le contexte fourni.
@@ -102,7 +89,7 @@ app.post('/api/chat', async (req, res) => {
         history: geminiChatHistory
       });
     } else {
-      chat = currentGeminiModel.startChat(); // Appel sans argument si pas d'historique
+      chat = currentGeminiModel.startChat();
     }
 
     const result = await chat.sendMessage(userTranscript);
@@ -163,16 +150,17 @@ app.post('/api/analyze', async (req, res) => {
 
     const analysisPrompt = `Analyse la conversation de vente suivante entre un commercial (rôle "user") et un client IA (rôle "model").
     Évalue la performance du commercial.
-    Fournis un score global sur 100, une liste de conseils personnalisés pour le commercial, et une liste de points spécifiques à améliorer.
+    Fournis un score global sur 100, une liste de conseils personnalisés généraux, une liste de points spécifiques à améliorer, ET une liste de conseils spécifiques basés sur des techniques de vente reconnues (ex: SPIN Selling, BANT, Challenger Sale, écoute active, reformulation, traitement des objections, closing, etc.) pour aider le commercial à s'améliorer.
     
     Conversation:
     ${conversation.map(msg => `${msg.sender === 'user' ? 'Commercial' : 'Client IA'}: ${msg.text}`).join('\n')}
     
-    Fournis ta réponse au format JSON, avec les champs suivants :
+    Fournis ta réponse au format JSON STRICTEMENT comme suit, avec les champs suivants :
     {
       "score": number, 
       "conseils": string[], 
-      "ameliorations": string[] 
+      "ameliorations": string[],
+      "techniquesDeVenteConseils": string[] 
     }
     Assure-toi que la réponse est un JSON valide et ne contient rien d'autre.`;
 
@@ -191,8 +179,12 @@ app.post('/api/analyze', async (req, res) => {
       } else {
         analysisResults = JSON.parse(analysisText);
       }
-      if (typeof analysisResults.score !== 'number' || !Array.isArray(analysisResults.conseils) || !Array.isArray(analysisResults.ameliorations)) {
-          throw new Error("Structure JSON inattendue de l'analyse.");
+      if (typeof analysisResults.score !== 'number' || 
+          !Array.isArray(analysisResults.conseils) || 
+          !Array.isArray(analysisResults.ameliorations) ||
+          !Array.isArray(analysisResults.techniquesDeVenteConseils)
+         ) {
+          throw new Error("Structure JSON inattendue de l'analyse. Champs attendus: score, conseils, ameliorations, techniquesDeVenteConseils.");
       }
 
     } catch (parseError) {

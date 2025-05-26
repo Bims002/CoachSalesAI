@@ -5,6 +5,7 @@ interface AnalysisResults {
   score?: number;
   conseils?: string[];
   ameliorations?: string[];
+  techniquesDeVenteConseils?: string[]; 
 }
 
 interface ResultsViewProps {
@@ -116,7 +117,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     );
   }
 
-  const { score, conseils, ameliorations } = analysisResults;
+  const { score, conseils, ameliorations, techniquesDeVenteConseils } = analysisResults;
 
   return (
     <div className="results-view-container app-section" style={{ backgroundColor: 'var(--color-bg)', border: 'none', boxShadow: 'none' }}>
@@ -156,6 +157,15 @@ const ResultsView: React.FC<ResultsViewProps> = ({
           <p className="placeholder-text">(Aucun point d'amélioration spécifique identifié)</p>
         )}
       </div>
+
+      {techniquesDeVenteConseils && techniquesDeVenteConseils.length > 0 && (
+        <div style={cardStyle}>
+          <h3 style={titleStyle}>Conseils sur les Techniques de Vente</h3>
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            {techniquesDeVenteConseils.map((item, index) => <li key={index} style={listItemStyle}>💡 {item}</li>)}
+          </ul>
+        </div>
+      )}
       
       <button onClick={onNewSimulation} style={{ marginTop: '30px', width: '100%', fontSize: '1.2em', padding: '15px 0' }}>
         🚀 Nouvelle Simulation
