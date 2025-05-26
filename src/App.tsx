@@ -333,11 +333,9 @@ function App() {
 
   useEffect(() => {
     if (currentUser && currentStep === 'auth') {
-      setCurrentStep('scenarioSelection');
-    } else if (!currentUser) {
-      if (currentStep === 'dashboard' || currentStep === 'history') {
-        setCurrentStep('auth');
-      }
+      setCurrentStep('scenarioSelection'); 
+    } else if (!currentUser && (currentStep === 'dashboard' || currentStep === 'history')) {
+      setCurrentStep('auth'); 
     }
   }, [currentUser, currentStep, setCurrentStep]);
 
