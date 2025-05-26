@@ -147,18 +147,25 @@ function App() {
     audio.play().catch(e => {
       console.error("Erreur audio.play():", e);
       setIsAiSpeaking(false);
-      if (currentStep === 'simulation') startListening();
+      // Ne redémarrer l'écoute que si on est TOUJOURS en simulation ET que l'IA n'est pas en train de répondre/analyser
+      if (currentStep === 'simulation' && !isAiResponding && !isAnalyzing) {
+         startListening();
+      }
     });
     audio.onended = () => {
       setIsAiSpeaking(false);
-      if (currentStep === 'simulation') startListening();
+      if (currentStep === 'simulation' && !isAiResponding && !isAnalyzing) {
+         startListening();
+      }
     };
     audio.onerror = (e) => {
       console.error("Erreur de l'élément Audio:", e);
       setIsAiSpeaking(false);
-      if (currentStep === 'simulation') startListening();
+      if (currentStep === 'simulation' && !isAiResponding && !isAnalyzing) {
+         startListening();
+      }
     };
-  }, [currentStep, isListening, startListening, stopListening, setIsAiSpeaking]);
+  }, [currentStep, isListening, startListening, stopListening, setIsAiSpeaking, isAiResponding, isAnalyzing]); // Ajout de isAiResponding et isAnalyzing aux dépendances
 
   const getAiResponseCb = useCallback(async (userMessageText: string, currentConvHistory: Message[]) => {
     if (!selectedScenario || !userMessageText.trim() || !userContext.trim()) { 

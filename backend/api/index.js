@@ -53,20 +53,16 @@ app.post('/api/chat', async (req, res) => {
     }
 
     // Construire l'instruction système
-    // Si initialContext est fourni (ce sera le cas pour le premier tour), l'inclure.
-    // Pour les tours suivants, initialContext ne sera pas renvoyé par le frontend, donc on ne l'inclut pas dans le system prompt.
-    // L'historique de la conversation devrait suffire pour que Gemini garde le contexte.
     let systemPromptText = `Tu es un simulateur de client pour un commercial. Ton rôle est de jouer le client décrit dans le scénario de base suivant :
     Scénario: ${scenario.title}
     Description de base du client: ${scenario.description}.`;
 
-    if (initialContext && conversationHistory.length === 0) { // Ajouter le contexte initial seulement au premier tour
+    if (initialContext) { // Toujours ajouter le contexte initial s'il est fourni
     systemPromptText += `\nL'utilisateur a ajouté les précisions suivantes sur ton rôle, ton comportement, ou le produit/service en jeu : "${initialContext}". Intègre impérativement ces détails dans ta simulation. Ces précisions de l'utilisateur sont prioritaires et doivent guider tes réponses et objections.`;
     }
     
     systemPromptText += `\n\nLe commercial va essayer de te vendre un produit ou service en lien avec le contexte fourni.`;
     
-    // Ajout des instructions pour le contexte culturel africain/camerounais
     systemPromptText += `\n\nIMPORTANT : Adapte ton langage et tes réactions pour refléter un contexte client africain, spécifiquement camerounais. Cela signifie :
     - Utilise un français clair et accessible. Tu peux intégrer des expressions locales camerounaises si cela semble naturel et pertinent, mais sans excès ni caricature.
     - Montre une sensibilité aux relations interpersonnelles, à la confiance et au respect mutuel.
@@ -80,7 +76,7 @@ app.post('/api/chat', async (req, res) => {
     Ne révèle jamais que tu es une IA ou un simulateur. Joue ton rôle de client de manière crédible.`;
 
     const currentGeminiModel = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-pro-preview-05-06", // Mise à jour du modèle
+      model: "gemini-2.5-pro-preview-05-06",
       systemInstruction: {
         role: "system",
         parts: [{ text: systemPromptText }],
@@ -93,11 +89,21 @@ app.post('/api/chat', async (req, res) => {
         role: msg.sender === 'user' ? 'user' : 'model',
         parts: [{ text: msg.text }],
       }));
+      
+      if (geminiChatHistory.length > 0 && geminiChatHistory[0].role === 'model') {
+        console.warn("Premier message de l'historique était 'model', il a été retiré pour cet appel à Gemini.");
+        geminiChatHistory.shift(); 
+      }
     }
-
-    const chat = currentGeminiModel.startChat({ // Utiliser currentGeminiModel
-      history: geminiChatHistory,
-    });
+    
+    let chat;
+    if (geminiChatHistory.length > 0) {
+      chat = currentGeminiModel.startChat({
+        history: geminiChatHistory
+      });
+    } else {
+      chat = currentGeminiModel.startChat(); // Appel sans argument si pas d'historique
+    }
 
     const result = await chat.sendMessage(userTranscript);
     const aiResponseText = result.response.text();
@@ -109,20 +115,18 @@ app.post('/api/chat', async (req, res) => {
       return res.json({ aiResponse: "Je ne sais pas quoi répondre à cela.", audioContent: null });
     }
 
-    // 2. Convertir la réponse textuelle en audio
     let audioContentBase64 = null;
     try {
       const ttsRequest = {
         input: { text: aiResponseText },
-        voice: { languageCode: 'fr-FR', name: 'fr-FR-Neural2-A' }, // Nouvelle voix Neural2
+        voice: { languageCode: 'fr-FR', name: 'fr-FR-Neural2-A' },
         audioConfig: { audioEncoding: 'MP3' },
       };
       const [ttsResponse] = await ttsClient.synthesizeSpeech(ttsRequest);
       audioContentBase64 = ttsResponse.audioContent.toString('base64');
-      console.log("Audio généré par TTS (longueur base64):", audioContentBase64 ? audioContentBase64.length : 'null'); // LOG AJOUTÉ
+      console.log("Audio généré par TTS (longueur base64):", audioContentBase64 ? audioContentBase64.length : 'null');
     } catch (ttsError) {
       console.error('Erreur Text-to-Speech:', ttsError.message, ttsError.stack);
-      // audioContentBase64 reste null
     }
     
     res.json({ aiResponse: aiResponseText, audioContent: audioContentBase64 });
@@ -131,7 +135,6 @@ app.post('/api/chat', async (req, res) => {
     console.error('Erreur dans /api/chat:', error.message, error.stack);
     let errorMsg = 'Erreur interne du serveur.';
     let errorDetails = null;
-    // Tenter de récupérer des détails plus spécifiques de l'erreur Gemini
     if (error.response && error.response.promptFeedback && error.response.promptFeedback.blockReason) {
         errorMsg = `Contenu bloqué par l'API Gemini: ${error.response.promptFeedback.blockReason}`;
         errorDetails = error.response.promptFeedback;
@@ -139,17 +142,16 @@ app.post('/api/chat', async (req, res) => {
         errorMsg = error.message;
     }
     
-    if (error.response && error.response.data) { // Pour les erreurs HTTP générales de l'API
+    if (error.response && error.response.data) {
         errorDetails = error.response.data;
     }
     res.status(500).json({ error: errorMsg, details: errorDetails });
   }
 });
 
-// Nouvelle route pour l'analyse de la simulation
 app.post('/api/analyze', async (req, res) => {
   try {
-    const { conversation } = req.body; // Recevoir la conversation complète
+    const { conversation } = req.body; 
 
     if (!conversation || !Array.isArray(conversation)) {
       return res.status(400).json({ error: 'La conversation est requise et doit être un tableau.' });
@@ -159,7 +161,6 @@ app.post('/api/analyze', async (req, res) => {
       return res.status(500).json({ error: 'Configuration du serveur incomplète (clé API manquante).' });
     }
 
-    // Construire le prompt pour l'analyse
     const analysisPrompt = `Analyse la conversation de vente suivante entre un commercial (rôle "user") et un client IA (rôle "model").
     Évalue la performance du commercial.
     Fournis un score global sur 100, une liste de conseils personnalisés pour le commercial, et une liste de points spécifiques à améliorer.
@@ -169,38 +170,33 @@ app.post('/api/analyze', async (req, res) => {
     
     Fournis ta réponse au format JSON, avec les champs suivants :
     {
-      "score": number, // Score global sur 100 (ex: 75/100)
-      "conseils": string[], // Liste de conseils (ex: ["Améliorer l'écoute active", "Poser plus de questions ouvertes"])
-      "ameliorations": string[] // Liste de points à améliorer (ex: ["Interruption du client", "Manque de clarté sur les bénéfices"])
+      "score": number, 
+      "conseils": string[], 
+      "ameliorations": string[] 
     }
     Assure-toi que la réponse est un JSON valide et ne contient rien d'autre.`;
 
-    const geminiAnalysisModel = genAI.getGenerativeModel({ model: "gemini-2.5-pro-preview-05-06" }); // Mise à jour du modèle pour l'analyse
+    const geminiAnalysisModel = genAI.getGenerativeModel({ model: "gemini-2.5-pro-preview-05-06" }); 
 
     const result = await geminiAnalysisModel.generateContent(analysisPrompt);
     const analysisText = result.response.text();
 
     console.log("Réponse d'analyse de Gemini:", analysisText);
 
-    // Tenter de parser la réponse JSON de Gemini
     let analysisResults = null;
     try {
-      // Gemini peut parfois inclure le JSON dans des blocs de code markdown ```json ... ```
       const jsonMatch = analysisText.match(/```json\n([\s\S]*?)\n```/);
-      if (jsonMatch && jsonMatch[1]) { // Correction: jsonMatch[1] au lieu de json[1]
+      if (jsonMatch && jsonMatch[1]) { 
         analysisResults = JSON.parse(jsonMatch[1]);
       } else {
-        // Si pas de bloc de code, essayer de parser directement
         analysisResults = JSON.parse(analysisText);
       }
-      // Valider la structure de base
       if (typeof analysisResults.score !== 'number' || !Array.isArray(analysisResults.conseils) || !Array.isArray(analysisResults.ameliorations)) {
           throw new Error("Structure JSON inattendue de l'analyse.");
       }
 
     } catch (parseError) {
       console.error('Erreur lors du parsing de la réponse d\'analyse de Gemini:', parseError.message, parseError.stack);
-      // Renvoyer une erreur spécifique si le parsing échoue
       return res.status(500).json({ error: 'Erreur lors du traitement de l\'analyse par l\'IA.', details: parseError.message });
     }
 
@@ -223,14 +219,4 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
-
-// Exporter l'application Express pour Vercel
-// Vercel s'attend à ce que le fichier par défaut exporte la fonction handler.
-// Si ce fichier est à la racine du dossier /api, Vercel le gère automatiquement.
 module.exports = app;
-
-// Si on voulait le lancer localement pour des tests (non nécessaire pour Vercel serverless)
-// const PORT = process.env.PORT || 3001;
-// app.listen(PORT, () => {
-//   console.log(`Serveur backend démarré sur le port ${PORT}`);
-// });
