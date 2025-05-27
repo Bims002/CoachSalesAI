@@ -27,9 +27,9 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      // Charger l'historique personnel
-      const userHistoryCollection = collection(db, `users/${currentUser.uid}/simulations`);
-      const personalQuery = query(userHistoryCollection, orderBy('date', 'desc'), limit(20));
+      // Charger l'historique personnel depuis la collection racine 'simulations'
+      const simulationsCollection = collection(db, "simulations");
+      const personalQuery = query(simulationsCollection, where("userId", "==", currentUser.uid), orderBy("date", "desc"), limit(20));
       const personalSnapshot = await getDocs(personalQuery);
       const fetchedPersonalHistory: SimulationRecord[] = personalSnapshot.docs.map(doc => {
         const data = doc.data();
@@ -54,8 +54,8 @@ const Dashboard: React.FC = () => {
           
           const membersDataPromises = teamSnapshot.docs.map(async (memberDoc) => {
             const memberProfile = memberDoc.data() as UserProfile;
-            const memberSimulationsCollection = collection(db, `users/${memberProfile.uid}/simulations`);
-            const memberSimsQuery = query(memberSimulationsCollection, orderBy('date', 'desc'));
+            // Récupérer les simulations du membre depuis la collection racine 'simulations'
+            const memberSimsQuery = query(simulationsCollection, where("userId", "==", memberProfile.uid), orderBy("date", "desc"));
             const memberSimsSnapshot = await getDocs(memberSimsQuery);
             
             const simulations: SimulationRecord[] = memberSimsSnapshot.docs.map(simDoc => {
