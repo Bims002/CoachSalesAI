@@ -206,14 +206,14 @@ ul {
 }
 
 .app-section ul li:hover {
-  background-color: #21262d;
+  background-color: var(--color-border); /* Un gris un peu plus foncé que bg-secondary */
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
 
 .app-section ul li.selected {
   background-color: var(--color-accent);
-  color: white;
+  color: white; /* Le blanc sur bleu vif est ok */
   border-color: var(--color-accent-hover);
   font-weight: 700;
 }
@@ -221,12 +221,25 @@ ul {
 .selected-scenario-description {
   margin-top: 20px;
   padding: 16px;
-  background-color: #21262d;
-  border-left: 8px solid var(--color-accent);
-  color: var(--color-text-primary);
-  font-weight: 600;
-  font-size: 1.1rem;
+  background-color: var(--color-bg-secondary); /* Utiliser une variable pour fond clair */
+  border-left: 4px solid var(--color-accent); /* Bordure d'accentuation plus fine */
+  color: var(--color-text-primary); /* Texte principal */
+  font-weight: normal; /* Pas besoin de gras ici, le placeholder-text gère l'italique */
+  font-size: 1rem; /* Taille standard */
+  border-radius: 6px;
 }
+.selected-scenario-description h4 { /* Style pour le titre dans la description */
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: var(--color-text-primary); /* Texte plus foncé pour le titre */
+  font-size: 1.1rem;
+  font-weight: 600; /* Semi-gras */
+}
+.selected-scenario-description p.placeholder-text { /* Style pour le texte de description */
+ color: var(--color-text-secondary); /* Texte secondaire pour la description */
+ font-style: normal; /* Pas besoin d'italique si c'est le texte principal de la description */
+}
+
 
 .placeholder-text {
   color: var(--color-text-secondary);
@@ -268,8 +281,9 @@ ul {
 }
 
 .message.ai {
-  background-color: #21262d;
-  color: var(--color-accent);
+  background-color: var(--color-bg-secondary); /* Fond clair pour les messages IA */
+  color: var(--color-text-primary); /* Texte foncé pour les messages IA */
+  border: 1px solid var(--color-border); /* Légère bordure */
   margin-right: auto;
   text-align: left;
   box-shadow: 0 4px 12px rgba(33, 38, 45, 0.4);
