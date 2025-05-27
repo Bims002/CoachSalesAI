@@ -7,15 +7,22 @@ import {
   signInWithPopup,
   sendPasswordResetEmail
 } from 'firebase/auth';
+import type { UserCredential } from 'firebase/auth'; // Importer UserCredential en tant que type
+import { doc, setDoc } from 'firebase/firestore'; // Importer pour Firestore
+import { db } from '../firebase-config'; // Importer db
+import type { UserProfile } from '../contexts/AuthContext'; // Importer UserProfile
 
 interface AuthFormProps {
-  onNavigateToGuest?: () => void; // La fonction passée par App.tsx gère la destination
+  onNavigateToGuest?: () => void; 
 }
+
+type UserRole = 'commercial' | 'manager'; // Simplifié pour l'inscription, 'admin' serait géré autrement
 
 const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [selectedRole, setSelectedRole] = useState<UserRole>('commercial'); // Nouvel état pour le rôle
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -27,7 +34,19 @@ const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential: UserCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Après la création de l'utilisateur Firebase Auth, créer le profil Firestore
+        if (userCredential.user) {
+          const userRef = doc(db, 'users', userCredential.user.uid);
+          const newUserProfile: Omit<UserProfile, 'uid'> & { uid?: string } = { // uid est dans userCredential.user.uid
+            email: userCredential.user.email,
+            displayName: userCredential.user.displayName, // Peut être null, ou demander un nom d'utilisateur
+            role: selectedRole,
+            // teamId et managerId peuvent être définis plus tard par un admin/manager
+          };
+          await setDoc(userRef, { uid: userCredential.user.uid, ...newUserProfile });
+          console.log("Profil Firestore créé depuis AuthForm avec rôle:", selectedRole);
+        }
       }
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') {
@@ -84,9 +103,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
         </div>
         {isLogin && (
           <div>
-            <label htmlFor="password">Mot de passe:</label>
-            <input
-              type="password"
+           <label htmlFor="password">Mot de passe:</label>
+           <input
+             type="password"
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -107,8 +126,36 @@ const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
              value={password}
              onChange={(e) => setPassword(e.target.value)}
              required
-             style={{ width: '100%', padding: '10px', marginBottom: '20px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)' }}
+             style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)' }}
            />
+           {/* Sélecteur de rôle pour l'inscription */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px' }}>Je suis un :</label>
+              <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '20px' }}>
+                <label style={{ cursor: 'pointer' }}>
+                  <input 
+                    type="radio" 
+                    name="role" 
+                    value="commercial" 
+                    checked={selectedRole === 'commercial'} 
+                    onChange={() => setSelectedRole('commercial')} 
+                    style={{ marginRight: '5px' }}
+                  />
+                  Commercial
+                </label>
+                <label style={{ cursor: 'pointer' }}>
+                  <input 
+                    type="radio" 
+                    name="role" 
+                    value="manager" 
+                    checked={selectedRole === 'manager'} 
+                    onChange={() => setSelectedRole('manager')} 
+                    style={{ marginRight: '5px' }}
+                  />
+                  Manager
+                </label>
+              </div>
+            </div>
          </div>
         )}
         {error && <p style={{ color: '#dc3545', marginBottom: '10px', textAlign: 'center', fontSize: '0.9rem' }}>{error}</p>}
