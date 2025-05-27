@@ -155,6 +155,7 @@ function App() {
     setIsAiSpeaking(true);
     const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
     audio.play().catch(e => {
+      console.error("Erreur audio.play():", e); // S'assurer que 'e' est utilisé
       setIsAiSpeaking(false);
       if (location.pathname.startsWith('/simulation') && !isAiResponding && !isAnalyzing) startListening();
     });
@@ -162,7 +163,8 @@ function App() {
       setIsAiSpeaking(false);
       if (location.pathname.startsWith('/simulation') && !isAiResponding && !isAnalyzing) startListening();
     };
-    audio.onerror = () => {
+    audio.onerror = (e) => { // S'assurer que 'e' est utilisé ici aussi
+      console.error("Erreur de l'élément Audio:", e);
       setIsAiSpeaking(false);
       if (location.pathname.startsWith('/simulation') && !isAiResponding && !isAnalyzing) startListening();
     };
