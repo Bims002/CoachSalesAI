@@ -3,65 +3,58 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Collection USERS
-    // Chaque utilisateur peut lire son propre profil.
-    // La création se fait via AuthContext (ou Cloud Function pour plus de contrôle sur les rôles).
-    // La mise à jour des rôles/équipes devrait être restreinte (ex: admin ou manager via Cloud Function).
     match /users/{userId} {
-      allow read: if request.auth.uid == userId;
-      // Permettre à l'utilisateur de créer son profil initialement si le document n'existe pas encore.
-      allow create: if request.auth.uid == userId && !exists(/databases/$(database)/documents/users/$(userId));
-      // Permettre à l'utilisateur de mettre à jour son propre profil, 
-      // MAIS la mise à jour du champ 'role', 'managerId', 'teamId' devrait être contrôlée.
-      // Pour une sécurité accrue, ces champs devraient être modifiables uniquement par un admin via Cloud Functions.
-      // Pour la simplicité du MVP, on peut être plus permissif, mais c'est un point de sécurité.
-      allow update: if request.auth.uid == userId && 
-                       !(request.resource.data.role != resource.data.role || 
-                         request.resource.data.managerId != resource.data.managerId ||
-                         request.resource.data.teamId != resource.data.teamId); 
-                       // Empêche l'utilisateur de changer son rôle, managerId ou teamId lui-même.
-                       // Permet de mettre à jour d'autres champs (ex: displayName s'il est géré ici).
-      // Un admin pourrait avoir : allow write;
+      // Un utilisateur peut lire son propre profil.
+      // Un manager peut lire les profils des utilisateurs qui ont cet UID de manager dans leur champ managerId.
+      // Un admin peut lire tous les profils (si le rôle admin est implémenté et vérifié).
+      allow read: if request.auth.uid == userId ||
+                     (request.auth.uid != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' &&
+                      resource.data.managerId == request.auth.uid
+                     ) ||
+                     (request.auth.uid != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                     );
+
+      allow create: if request.auth.uid == userId && 
+                       !exists(/databases/$(database)/documents/users/$(userId));
+      
+      allow update: if request.auth.uid == userId &&
+                       // L'utilisateur ne peut pas changer son rôle, managerId, ou teamId lui-même.
+                       !(request.resource.data.role != resource.data.role ||
+                         ('managerId' in request.resource.data && request.resource.data.managerId != resource.data.managerId) ||
+                         ('teamId' in request.resource.data && request.resource.data.teamId != resource.data.teamId)
+                       );
+      // La suppression de profil utilisateur est généralement gérée par des fonctions admin.
+      // allow delete: if false; 
     }
 
-    // Nouvelle collection SIMULATIONS
-    // Chaque document contient userId, et potentiellement managerId, teamId
     match /simulations/{simulationId} {
-      // Création : L'utilisateur authentifié doit être le userId du document de simulation.
-      // Et les champs userId, managerId, teamId ne doivent pas être falsifiés si fournis.
       allow create: if request.auth.uid == request.resource.data.userId &&
+                       // Vérifier que les champs d'identification ne sont pas falsifiés
                        request.resource.data.userId == request.auth.uid &&
-                       (!('managerId' in request.resource.data) || request.resource.data.managerId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.managerId) &&
-                       (!('teamId' in request.resource.data) || request.resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId);
+                       // Si managerId est fourni, il doit correspondre à celui du profil de l'utilisateur qui crée
+                       (!('managerId' in request.resource.data) || request.resource.data.managerId == null || request.resource.data.managerId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.managerId) &&
+                       // Si teamId est fourni, il doit correspondre à celui du profil de l'utilisateur qui crée
+                       (!('teamId' in request.resource.data) || request.resource.data.teamId == null || request.resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId);
 
-
-      // Lecture :
-      // 1. L'utilisateur peut lire ses propres simulations.
-      // 2. Un manager peut lire les simulations des membres de son équipe.
       allow read: if request.auth.uid != null && (
+                    // L'utilisateur peut lire ses propres simulations
                     request.auth.uid == resource.data.userId ||
+                    // Un manager peut lire les simulations des membres de son équipe
                     (
                       exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager' &&
-                      (
-                        // Option 1: Le managerId de la simulation correspond à l'UID du manager
-                        resource.data.managerId == request.auth.uid
-                        // Option 2 (si on utilise teamId pour le manager):
-                        // Le teamId de la simulation correspond au teamId du manager (stocké dans son profil)
-                        // && resource.data.teamId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId 
-                        // (Choisir une seule de ces logiques de team/manager pour la lecture)
-                      )
+                      resource.data.managerId == request.auth.uid
+                    ) ||
+                    // Un admin peut lire toutes les simulations
+                    (
+                      exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
                     )
                   );
 
-      // Mise à jour et Suppression : Restreintes au créateur.
       allow update, delete: if request.auth.uid == resource.data.userId;
     }
-
-    // Si vous ajoutez une collection 'teams'
-    // match /teams/{teamId} {
-    //   allow read: if request.auth.uid != null; // Ou plus restrictif
-    //   // La création/gestion des équipes devrait être pour les admins/managers
-    // }
   }
 }
