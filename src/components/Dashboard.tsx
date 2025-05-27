@@ -1,95 +1,178 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import type { UserProfile } from '../contexts/AuthContext'; // Importer UserProfile en tant que type
 import type { SimulationRecord } from './HistoryView';
+import { db } from '../firebase-config';
+import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-interface DashboardProps {
-  history: SimulationRecord[];
+// Interface pour les données combinées d'un membre de l'équipe
+interface TeamMemberData extends UserProfile {
+  simulations: SimulationRecord[];
+  averageScore?: number;
+  totalSimulations?: number;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ history }) => {
-  if (history.length === 0) {
-    return <p className="placeholder-text" style={{ textAlign: 'center', marginTop: '20px' }}>Aucun progrès à afficher. Effectuez des simulations pour commencer.</p>;
+const Dashboard: React.FC = () => {
+  const { currentUser, userProfile } = useAuth();
+  const [personalHistory, setPersonalHistory] = useState<SimulationRecord[]>([]);
+  const [teamMembersData, setTeamMembersData] = useState<TeamMemberData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      if (!currentUser || !userProfile) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Charger l'historique personnel
+      const userHistoryCollection = collection(db, `users/${currentUser.uid}/simulations`);
+      const personalQuery = query(userHistoryCollection, orderBy('date', 'desc'), limit(20));
+      const personalSnapshot = await getDocs(personalQuery);
+      const fetchedPersonalHistory: SimulationRecord[] = personalSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          date: data.date instanceof Timestamp ? data.date.toDate().toLocaleString() : new Date(data.date).toLocaleString(),
+          scenarioTitle: data.scenarioTitle,
+          score: data.score,
+          summary: data.summary,
+        };
+      });
+      setPersonalHistory(fetchedPersonalHistory);
+
+      // Si l'utilisateur est un manager, charger les données de l'équipe
+      if (userProfile.role === 'manager' && currentUser.uid) {
+        try {
+          const usersCollection = collection(db, 'users');
+          // Récupérer les commerciaux qui ont ce managerId
+          // (Alternative: si le manager a un teamId, récupérer les users avec ce teamId)
+          const teamQuery = query(usersCollection, where('managerId', '==', currentUser.uid));
+          const teamSnapshot = await getDocs(teamQuery);
+          
+          const membersDataPromises = teamSnapshot.docs.map(async (memberDoc) => {
+            const memberProfile = memberDoc.data() as UserProfile;
+            const memberSimulationsCollection = collection(db, `users/${memberProfile.uid}/simulations`);
+            const memberSimsQuery = query(memberSimulationsCollection, orderBy('date', 'desc'));
+            const memberSimsSnapshot = await getDocs(memberSimsQuery);
+            
+            const simulations: SimulationRecord[] = memberSimsSnapshot.docs.map(simDoc => {
+              const data = simDoc.data();
+              return {
+                id: simDoc.id,
+                date: data.date instanceof Timestamp ? data.date.toDate().toLocaleString() : new Date(data.date).toLocaleString(),
+                scenarioTitle: data.scenarioTitle,
+                score: data.score,
+                summary: data.summary,
+              };
+            });
+            
+            const validScores = simulations.filter(sim => typeof sim.score === 'number' && !isNaN(sim.score));
+            const averageScore = validScores.length > 0 
+              ? validScores.reduce((acc, sim) => acc + (sim.score ?? 0), 0) / validScores.length 
+              : 0;
+
+            return { 
+              ...memberProfile, 
+              simulations, 
+              averageScore,
+              totalSimulations: simulations.length 
+            };
+          });
+          
+          const resolvedMembersData = await Promise.all(membersDataPromises);
+          setTeamMembersData(resolvedMembersData);
+
+        } catch (error) {
+          console.error("Erreur lors de la récupération des données de l'équipe:", error);
+        }
+      }
+      setIsLoading(false);
+    };
+
+    fetchData();
+  }, [currentUser, userProfile]);
+
+  if (isLoading) {
+    return <div className="app-section" style={{ textAlign: 'center' }}><div className="loader-ia"></div><p>Chargement du tableau de bord...</p></div>;
   }
 
-  // Préparer les données pour le graphique des scores
-  // Trier l'historique par date pour le graphique
-  const sortedHistory = [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const scoreData = sortedHistory.map((record, index) => ({
-    name: `Sim ${index + 1}`, // Ou utiliser record.date formaté si plus pertinent
-    score: record.score ?? 0, // Utiliser 0 si le score est null
-    date: new Date(record.date).toLocaleDateString(), // Pour l'infobulle
-  }));
+  // --- Fonctions de rendu pour le tableau de bord personnel ---
+  const renderPersonalDashboard = () => {
+    if (personalHistory.length === 0) {
+      return <p className="placeholder-text" style={{ textAlign: 'center', marginTop: '20px' }}>Aucun progrès à afficher. Effectuez des simulations pour commencer.</p>;
+    }
+    const sortedHistory = [...personalHistory].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const scoreData = sortedHistory.map((record, index) => ({
+      name: `Sim ${index + 1}`,
+      score: record.score ?? 0,
+      date: new Date(record.date).toLocaleDateString(),
+    }));
+    const validScores = personalHistory.filter(record => record.score !== null && record.score !== undefined);
+    const averageScore = validScores.length > 0 
+      ? validScores.reduce((acc, record) => acc + (record.score ?? 0), 0) / validScores.length
+      : 0;
+    const totalSimulations = personalHistory.length;
 
-  // Calculer le score moyen
-  const validScores = history.filter(record => record.score !== null);
-  const averageScore = validScores.length > 0 
-    ? validScores.reduce((acc, record) => acc + (record.score ?? 0), 0) / validScores.length
-    : 0;
+    return (
+      <>
+        <h2>Tableau de Bord Personnel</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '30px', flexWrap: 'wrap' }}>
+          <div style={{ textAlign: 'center', padding: '20px', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '8px', minWidth: '200px', margin: '10px' }}>
+            <h3>Score Moyen</h3>
+            <p style={{ fontSize: '2em', color: 'var(--color-accent)', margin: '0' }}>{averageScore.toFixed(1)} / 100</p>
+          </div>
+          <div style={{ textAlign: 'center', padding: '20px', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '8px', minWidth: '200px', margin: '10px' }}>
+            <h3>Simulations Réalisées</h3>
+            <p style={{ fontSize: '2em', color: 'var(--color-accent)', margin: '0' }}>{totalSimulations}</p>
+          </div>
+        </div>
+        <h3>Évolution des Scores</h3>
+        {scoreData.length > 1 ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={scoreData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="name" stroke="var(--color-text-secondary)" />
+              <YAxis domain={[0, 100]} stroke="var(--color-text-secondary)" />
+              <Tooltip 
+                contentStyle={{ backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)'}} 
+                labelFormatter={(label: string) => `Simulation: ${label}`}
+                formatter={(value: number, _name: string, props: any) => [`Score: ${value}`, `Date: ${props.payload.date}`]}
+              />
+              <Legend />
+              <Line type="monotone" dataKey="score" stroke="var(--color-accent)" strokeWidth={2} activeDot={{ r: 8 }} name="Score" />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="placeholder-text" style={{ textAlign: 'center' }}>Effectuez au moins deux simulations pour voir l'évolution de vos scores.</p>
+        )}
+      </>
+    );
+  };
 
-  // Calculer le nombre total de simulations
-  const totalSimulations = history.length;
-
-  // Extraire les conseils les plus fréquents
-  const conseilsCount: Record<string, number> = {};
-  history.forEach(record => {
-    (record.summary || '').split(', ').forEach(conseil => {
-      if (conseil.trim()) {
-        conseilsCount[conseil.trim()] = (conseilsCount[conseil.trim()] || 0) + 1;
-      }
-    });
-  });
-  const topConseils = Object.entries(conseilsCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([conseil]) => conseil);
+  // --- Fonctions de rendu pour le tableau de bord manager ---
+  const renderManagerDashboard = () => {
+    return (
+      <>
+        <h2>Tableau de Bord Manager</h2>
+        {teamMembersData.length === 0 && <p>Aucun membre d'équipe trouvé ou aucune simulation enregistrée pour l'équipe.</p>}
+        {teamMembersData.map(member => (
+          <div key={member.uid} style={{ padding: '15px', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
+            <h4>{member.displayName || member.email}</h4>
+            <p>Simulations réalisées : {member.totalSimulations ?? 0}</p>
+            <p>Score moyen : {(member.averageScore ?? 0).toFixed(1)} / 100</p>
+            {/* On pourrait ajouter un mini-graphique ou un lien vers plus de détails ici */}
+          </div>
+        ))}
+      </>
+    );
+  };
 
   return (
-    <div className="dashboard-container app-section"> {/* Ajout de app-section pour le style */}
-      <h2>Tableau de bord des progrès</h2>
-      
-      <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '30px', flexWrap: 'wrap' }}>
-        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '8px', minWidth: '200px', margin: '10px' }}>
-          <h3>Score Moyen</h3>
-          <p style={{ fontSize: '2em', color: 'var(--color-accent)', margin: '0' }}>{averageScore.toFixed(1)} / 100</p>
-        </div>
-        <div style={{ textAlign: 'center', padding: '20px', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '8px', minWidth: '200px', margin: '10px' }}>
-          <h3>Simulations Réalisées</h3>
-          <p style={{ fontSize: '2em', color: 'var(--color-accent)', margin: '0' }}>{totalSimulations}</p>
-        </div>
-      </div>
-
-      <h3>Évolution des Scores</h3>
-      {scoreData.length > 1 ? ( // Afficher le graphique seulement si plus d'un point de données
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={scoreData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-            <XAxis dataKey="name" stroke="var(--color-text-secondary)" />
-            <YAxis domain={[0, 100]} stroke="var(--color-text-secondary)" />
-            <Tooltip 
-              contentStyle={{ backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)'}} 
-              labelFormatter={(label: string) => `Simulation: ${label}`}
-              formatter={(value: number, _name: string, props: any) => [`Score: ${value}`, `Date: ${props.payload.date}`]}
-            />
-            <Legend />
-            <Line type="monotone" dataKey="score" stroke="var(--color-accent)" strokeWidth={2} activeDot={{ r: 8 }} name="Score" />
-          </LineChart>
-        </ResponsiveContainer>
-      ) : (
-        <p className="placeholder-text" style={{ textAlign: 'center' }}>Effectuez au moins deux simulations pour voir l'évolution de vos scores.</p>
-      )}
-
-      <div style={{ marginTop: '30px' }}>
-        <h3>Conseils les plus fréquents :</h3>
-        {topConseils.length > 0 ? (
-          <ul>
-            {topConseils.map((conseil, index) => (
-              <li key={index} style={{ padding: '10px', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '6px', marginBottom: '8px' }}>{conseil}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="placeholder-text" style={{ textAlign: 'center' }}>(Aucun conseil récurrent pour le moment)</p>
-        )}
-      </div>
+    <div className="dashboard-container app-section">
+      {userProfile?.role === 'manager' ? renderManagerDashboard() : renderPersonalDashboard()}
     </div>
   );
 };

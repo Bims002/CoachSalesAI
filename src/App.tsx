@@ -12,9 +12,10 @@ import Dashboard from './components/Dashboard';
 import AuthForm from './components/AuthForm';
 import ContextInput from './components/ContextInput';
 import { useAuth } from './contexts/AuthContext';
+import type { UserProfile } from './contexts/AuthContext'; // Importer UserProfile en tant que type
 import useSpeechRecognition from './hooks/useSpeechRecognition';
 import { db } from './firebase-config';
-import { collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, limit, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 export interface Scenario {
   id: string;
@@ -46,7 +47,7 @@ interface ProtectedRouteProps {
 }
 
 function App() {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth(); // Utiliser userProfile depuis le contexte
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -79,8 +80,9 @@ function App() {
     const fetchHistory = async () => {
       if (currentUser) {
         try {
-          const userHistoryCollection = collection(db, `users/${currentUser.uid}/simulations`);
-          const q = query(userHistoryCollection, orderBy('date', 'desc'), limit(20));
+          // Interroger la collection racine 'simulations' en filtrant par userId
+          const simulationsCollection = collection(db, "simulations");
+          const q = query(simulationsCollection, where("userId", "==", currentUser.uid), orderBy("date", "desc"), limit(20));
           const querySnapshot = await getDocs(q);
           const firestoreHistory: SimulationRecord[] = querySnapshot.docs.map(doc => {
             const data = doc.data();
@@ -97,35 +99,44 @@ function App() {
           console.error("Erreur Firestore (historique):", error);
         }
       } else {
-        const storedHistory = localStorage.getItem('coachSalesLocalHistory');
-        setHistory(storedHistory ? JSON.parse(storedHistory) : []);
+        // Pour les invités, l'historique est géré localement (si implémenté) ou vide
+        // const storedHistory = localStorage.getItem('coachSalesLocalHistory');
+        // setHistory(storedHistory ? JSON.parse(storedHistory) : []);
+        setHistory([]); // Pas d'historique pour les invités pour l'instant
       }
     };
     fetchHistory();
   }, [currentUser]); 
   
   const addToHistory = async (recordData: Omit<SimulationRecord, 'id' | 'date'>) => {
-    const newRecordBase = { ...recordData, date: serverTimestamp() };
     const newRecordDisplay: SimulationRecord = {
         ...recordData,
         id: Date.now().toString(), 
         date: new Date().toLocaleString(), 
     };
 
-    if (currentUser) {
+    if (currentUser && userProfile) { // S'assurer que userProfile est disponible
+      const firestoreRecord = {
+        ...recordData,
+        userId: currentUser.uid,
+        date: serverTimestamp(),
+        managerId: userProfile.managerId || null, 
+        teamId: userProfile.teamId || null, 
+      };
       try {
-        const userHistoryCollection = collection(db, `users/${currentUser.uid}/simulations`);
-        await addDoc(userHistoryCollection, newRecordBase);
+        const simulationsCollection = collection(db, "simulations");
+        await addDoc(simulationsCollection, firestoreRecord);
+        // Mettre à jour l'état local de l'historique pour refléter l'ajout
+        // La fonction fetchHistory se chargera de recharger depuis Firestore, ou on peut ajouter localement
         setHistory(prevHistory => [newRecordDisplay, ...prevHistory].slice(0, 20));
+
       } catch (error) {
         console.error("Erreur Firestore (ajout historique):", error);
       }
     } else {
-      setHistory(prevHistory => {
-        const updatedHistory = [newRecordDisplay, ...prevHistory].slice(0, 20);
-        localStorage.setItem('coachSalesLocalHistory', JSON.stringify(updatedHistory));
-        return updatedHistory;
-      });
+      // Gestion de l'historique local pour les invités (si souhaité à l'avenir)
+      // Pour l'instant, on ne fait rien pour les invités ou on pourrait stocker localement
+      console.log("Utilisateur invité, historique non sauvegardé sur Firestore.");
     }
   };
   
@@ -138,7 +149,7 @@ function App() {
       };
       addToHistory(recordData);
     }
-  }, [analysisResults, selectedScenario, currentUser]); 
+  }, [analysisResults, selectedScenario, currentUser, userProfile]); // Ajouter userProfile aux dépendances
 
   const handleSpeechResultCb = useCallback((finalTranscript: string) => {
     const trimmedTranscript = finalTranscript.trim();
@@ -279,8 +290,8 @@ function App() {
           display: currentAppStepForNavbar === 'auth' ? 'flex' : 'block',
           alignItems: currentAppStepForNavbar === 'auth' ? 'center' : 'flex-start', 
           justifyContent: currentAppStepForNavbar === 'auth' ? 'center' : 'flex-start',
-          paddingTop: currentAppStepForNavbar === 'auth' ? '10vh' : '20px', // Augmenter le padding pour pousser vers le centre
-          minHeight: 'calc(100vh - 40px)', // Assurer que main prend la hauteur (moins padding de body implicite)
+          paddingTop: currentAppStepForNavbar === 'auth' ? '10vh' : '20px', 
+          minHeight: 'calc(100vh - 40px)', 
           backgroundColor: currentAppStepForNavbar === 'auth' ? 'var(--color-bg-secondary)' : 'var(--color-bg)'
         }}
       >
@@ -289,7 +300,7 @@ function App() {
           style={{ 
             width: currentAppStepForNavbar === 'auth' ? 'auto' : '100%', 
             maxWidth: currentAppStepForNavbar === 'auth' ? '450px' : '960px',
-            margin: currentAppStepForNavbar === 'auth' ? '0 auto' : '0 auto' // Assurer le centrage horizontal
+            margin: currentAppStepForNavbar === 'auth' ? '0 auto' : '0 auto' 
           }}
         > 
           {apiError && <p style={{color: 'orange', textAlign: 'center', marginBottom: '20px'}}>Erreur API: {apiError}</p>}
@@ -298,7 +309,6 @@ function App() {
           <Routes>
             <Route path="/auth" element={
               <AuthRoute>
-                {/* La section app-section aura le même fond que main-content, la bordure la délimitera */}
                 <section id="auth-display" className="app-section" style={{ boxShadow: 'none', backgroundColor: 'var(--color-bg-secondary)' }}>
                   <AuthForm onNavigateToGuest={() => navigate('/')} />
                 </section>
@@ -383,7 +393,7 @@ function App() {
                 setAnalysisResults({ score: record.score, conseils: [], ameliorations: record.summary ? [record.summary] : [] });
                 navigate('/results');
             }} /></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard history={history} /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} /> {/* history prop retirée */}
             <Route path="*" element={<Navigate to={currentUser ? "/" : "/auth"} replace />} />
           </Routes>
         </div>

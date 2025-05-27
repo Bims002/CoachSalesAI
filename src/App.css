@@ -104,7 +104,7 @@ body {
   margin-bottom: 40px;
   padding: 30px;
   border-radius: 12px;
-  /*background-color: var(--color-bg-secondary); /* Les sections/cartes utilisent le fond secondaire */
+  background-color: var(--color-bg-secondary); /* Les sections/cartes utilisent le fond secondaire */
   border: 1px solid var(--color-border);
   box-shadow: 0 4px 16px var(--color-shadow);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
