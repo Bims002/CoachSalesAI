@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import type { UserProfile } from '../contexts/AuthContext'; // Importer UserProfile en tant que type
+import type { UserProfile } from '../contexts/AuthContext'; 
 import type { SimulationRecord } from './HistoryView';
 import { db } from '../firebase-config';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-// Interface pour les données combinées d'un membre de l'équipe
 interface TeamMemberData extends UserProfile {
   simulations: SimulationRecord[];
   averageScore?: number;
@@ -18,89 +17,118 @@ const Dashboard: React.FC = () => {
   const [personalHistory, setPersonalHistory] = useState<SimulationRecord[]>([]);
   const [teamMembersData, setTeamMembersData] = useState<TeamMemberData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
 
   useEffect(() => {
+    console.log("Dashboard useEffect triggered. currentUser:", !!currentUser, "userProfile:", userProfile);
     const fetchData = async () => {
+      console.log("Dashboard fetchData: Start. setIsLoading(true)");
       setIsLoading(true);
-      if (!currentUser || !userProfile) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Charger l'historique personnel depuis la collection racine 'simulations'
-      const simulationsCollection = collection(db, "simulations");
-      const personalQuery = query(simulationsCollection, where("userId", "==", currentUser.uid), orderBy("date", "desc"), limit(20));
-      const personalSnapshot = await getDocs(personalQuery);
-      const fetchedPersonalHistory: SimulationRecord[] = personalSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          date: data.date instanceof Timestamp ? data.date.toDate().toLocaleString() : new Date(data.date).toLocaleString(),
-          scenarioTitle: data.scenarioTitle,
-          score: data.score,
-          summary: data.summary,
-        };
-      });
-      setPersonalHistory(fetchedPersonalHistory);
-
-      // Si l'utilisateur est un manager, charger les données de l'équipe
-      if (userProfile.role === 'manager' && currentUser.uid) {
-        try {
-          const usersCollection = collection(db, 'users');
-          // Récupérer les commerciaux qui ont ce managerId
-          // (Alternative: si le manager a un teamId, récupérer les users avec ce teamId)
-          const teamQuery = query(usersCollection, where('managerId', '==', currentUser.uid));
-          const teamSnapshot = await getDocs(teamQuery);
-          
-          const membersDataPromises = teamSnapshot.docs.map(async (memberDoc) => {
-            const memberProfile = memberDoc.data() as UserProfile;
-            // Récupérer les simulations du membre depuis la collection racine 'simulations'
-            const memberSimsQuery = query(simulationsCollection, where("userId", "==", memberProfile.uid), orderBy("date", "desc"));
-            const memberSimsSnapshot = await getDocs(memberSimsQuery);
-            
-            const simulations: SimulationRecord[] = memberSimsSnapshot.docs.map(simDoc => {
-              const data = simDoc.data();
-              return {
-                id: simDoc.id,
-                date: data.date instanceof Timestamp ? data.date.toDate().toLocaleString() : new Date(data.date).toLocaleString(),
-                scenarioTitle: data.scenarioTitle,
-                score: data.score,
-                summary: data.summary,
-              };
-            });
-            
-            const validScores = simulations.filter(sim => typeof sim.score === 'number' && !isNaN(sim.score));
-            const averageScore = validScores.length > 0 
-              ? validScores.reduce((acc, sim) => acc + (sim.score ?? 0), 0) / validScores.length 
-              : 0;
-
-            return { 
-              ...memberProfile, 
-              simulations, 
-              averageScore,
-              totalSimulations: simulations.length 
-            };
-          });
-          
-          const resolvedMembersData = await Promise.all(membersDataPromises);
-          setTeamMembersData(resolvedMembersData);
-
-        } catch (error) {
-          console.error("Erreur lors de la récupération des données de l'équipe:", error);
+      setError(null); // Reset error state
+      try {
+        if (!currentUser || !userProfile) {
+          console.log("Dashboard fetchData: currentUser or userProfile missing. Exiting early.");
+          // setLoading(false) will be called in finally
+          return;
         }
+        console.log("Dashboard fetchData: User role:", userProfile.role);
+
+        const simulationsCollection = collection(db, "simulations");
+        
+        // Fetch personal history
+        console.log("Dashboard fetchData: Fetching personal history for user:", currentUser.uid);
+        const personalQuery = query(simulationsCollection, where("userId", "==", currentUser.uid), orderBy("date", "desc"), limit(20));
+        const personalSnapshot = await getDocs(personalQuery);
+        const fetchedPersonalHistory: SimulationRecord[] = personalSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            date: data.date instanceof Timestamp ? data.date.toDate().toLocaleString() : new Date(data.date).toLocaleString(),
+            scenarioTitle: data.scenarioTitle,
+            score: data.score,
+            summary: data.summary,
+          };
+        });
+        console.log("Dashboard fetchData: Personal history fetched:", fetchedPersonalHistory.length, "records");
+        setPersonalHistory(fetchedPersonalHistory);
+
+        // If manager, fetch team data
+        if (userProfile.role === 'manager' && currentUser.uid) {
+          console.log("Dashboard fetchData: User is a manager. Fetching team data for managerId:", currentUser.uid);
+          try {
+            const usersCollection = collection(db, 'users');
+            const teamQuery = query(usersCollection, where('managerId', '==', currentUser.uid));
+            const teamSnapshot = await getDocs(teamQuery);
+            console.log("Dashboard fetchData: Team members query snapshot size:", teamSnapshot.size);
+            
+            if (teamSnapshot.empty) {
+              console.log("Dashboard fetchData: No team members found for this manager.");
+              setTeamMembersData([]);
+            } else {
+              const membersDataPromises = teamSnapshot.docs.map(async (memberDoc) => {
+                const memberProfile = memberDoc.data() as UserProfile;
+                console.log("Dashboard fetchData: Processing team member:", memberProfile.uid, memberProfile.email);
+                const memberSimsQuery = query(simulationsCollection, where("userId", "==", memberProfile.uid), orderBy("date", "desc"));
+                const memberSimsSnapshot = await getDocs(memberSimsQuery);
+                
+                const simulations: SimulationRecord[] = memberSimsSnapshot.docs.map(simDoc => {
+                  const data = simDoc.data();
+                  return { /* ... map simulation data ... */ 
+                    id: simDoc.id,
+                    date: data.date instanceof Timestamp ? data.date.toDate().toLocaleString() : new Date(data.date).toLocaleString(),
+                    scenarioTitle: data.scenarioTitle,
+                    score: data.score,
+                    summary: data.summary,
+                  };
+                });
+                console.log(`Dashboard fetchData: Fetched ${simulations.length} simulations for member ${memberProfile.uid}`);
+                
+                const validScores = simulations.filter(sim => typeof sim.score === 'number' && !isNaN(sim.score));
+                const averageScore = validScores.length > 0 
+                  ? validScores.reduce((acc, sim) => acc + (sim.score ?? 0), 0) / validScores.length 
+                  : 0;
+
+                return { ...memberProfile, simulations, averageScore, totalSimulations: simulations.length };
+              });
+              
+              const resolvedMembersData = await Promise.all(membersDataPromises);
+              console.log("Dashboard fetchData: Team members data resolved:", resolvedMembersData);
+              setTeamMembersData(resolvedMembersData);
+            }
+          } catch (teamError) {
+            console.error("Dashboard fetchData: Error fetching team data:", teamError);
+            setError("Erreur lors de la récupération des données de l'équipe.");
+          }
+        }
+      } catch (globalError) {
+        console.error("Dashboard fetchData: Global error in fetchData:", globalError);
+        setError("Une erreur est survenue lors du chargement du tableau de bord.");
+      } finally {
+        console.log("Dashboard fetchData: Finally block. setIsLoading(false)");
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
-    fetchData();
+    if (currentUser && userProfile) {
+      console.log("Dashboard useEffect: Calling fetchData.");
+      fetchData();
+    } else {
+      console.log("Dashboard useEffect: currentUser or userProfile not ready. setIsLoading(false).");
+      setIsLoading(false); 
+    }
   }, [currentUser, userProfile]);
 
   if (isLoading) {
     return <div className="app-section" style={{ textAlign: 'center' }}><div className="loader-ia"></div><p>Chargement du tableau de bord...</p></div>;
   }
+  if (error) {
+    return <div className="app-section" style={{ textAlign: 'center', color: 'red' }}><p>{error}</p></div>;
+  }
 
-  // --- Fonctions de rendu pour le tableau de bord personnel ---
+
   const renderPersonalDashboard = () => {
+    // ... (contenu existant de renderPersonalDashboard)
     if (personalHistory.length === 0) {
       return <p className="placeholder-text" style={{ textAlign: 'center', marginTop: '20px' }}>Aucun progrès à afficher. Effectuez des simulations pour commencer.</p>;
     }
@@ -152,8 +180,8 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  // --- Fonctions de rendu pour le tableau de bord manager ---
   const renderManagerDashboard = () => {
+    // ... (contenu existant de renderManagerDashboard)
     const tổngSimulationsEquipe = teamMembersData.reduce((acc, member) => acc + (member.totalSimulations ?? 0), 0);
     const membresAvecScoresValides = teamMembersData.filter(member => member.totalSimulations && member.totalSimulations > 0 && member.averageScore !== undefined);
     const scoreMoyenEquipe = membresAvecScoresValides.length > 0
@@ -165,7 +193,7 @@ const Dashboard: React.FC = () => {
       padding: '20px',
       borderRadius: '8px',
       marginBottom: '20px',
-      boxShadow: 'var(--color-shadow) 0px 2px 4px' // Utiliser la variable CSS pour l'ombre
+      boxShadow: 'var(--color-shadow) 0px 2px 4px'
     };
     
     const statItemStyle: React.CSSProperties = {
@@ -176,7 +204,6 @@ const Dashboard: React.FC = () => {
     return (
       <>
         <h2>Tableau de Bord Manager</h2>
-
         <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '30px', flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'center', ...cardStyle, minWidth: '220px', margin:'10px' }}>
             <h3 style={{marginTop:0}}>Simulations de l'Équipe</h3>
@@ -189,18 +216,14 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
         </div>
-
         <h3>Performance des Commerciaux</h3>
         {teamMembersData.length === 0 && <p className="placeholder-text" style={{textAlign: 'center'}}>Aucun commercial trouvé pour cette équipe ou aucune donnée de simulation.</p>}
-        
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
           {teamMembersData.map(member => (
             <div key={member.uid} style={cardStyle}>
               <h4 style={{ marginTop: 0, color: 'var(--color-accent-hover)'}}>{member.displayName || member.email}</h4>
               <p style={statItemStyle}>Simulations : <strong>{member.totalSimulations ?? 0}</strong></p>
               <p style={statItemStyle}>Score Moyen : <strong>{(member.averageScore ?? 0).toFixed(1)} / 100</strong></p>
-              {/* TODO: Ajouter un bouton/lien pour voir les détails des simulations du membre */}
-              {/* <button style={{fontSize: '0.9rem', padding: '8px 12px', marginTop: '10px'}}>Voir Détails</button> */}
             </div>
           ))}
         </div>
@@ -208,6 +231,7 @@ const Dashboard: React.FC = () => {
     );
   };
 
+  console.log("Dashboard render. isLoading:", isLoading, "userProfile role:", userProfile?.role);
   return (
     <div className="dashboard-container app-section">
       {userProfile?.role === 'manager' ? renderManagerDashboard() : renderPersonalDashboard()}
