@@ -277,15 +277,20 @@ function App() {
         style={{ 
           marginLeft: currentAppStepForNavbar !== 'auth' ? '260px' : '0',
           display: currentAppStepForNavbar === 'auth' ? 'flex' : 'block',
-          alignItems: currentAppStepForNavbar === 'auth' ? 'center' : 'flex-start', // Changé pour aligner en haut
+          alignItems: currentAppStepForNavbar === 'auth' ? 'center' : 'flex-start', 
           justifyContent: currentAppStepForNavbar === 'auth' ? 'center' : 'flex-start',
-          paddingTop: currentAppStepForNavbar === 'auth' ? '5vh' : '20px', // Un peu de padding en haut pour la page auth
-          minHeight: currentAppStepForNavbar === 'auth' ? 'calc(100vh - 5vh - 20px)' : 'auto' // Ajuster minHeight
+          paddingTop: currentAppStepForNavbar === 'auth' ? '10vh' : '20px', // Augmenter le padding pour pousser vers le centre
+          minHeight: 'calc(100vh - 40px)', // Assurer que main prend la hauteur (moins padding de body implicite)
+          backgroundColor: currentAppStepForNavbar === 'auth' ? 'var(--color-bg-secondary)' : 'var(--color-bg)'
         }}
       >
         <div 
           className="app-container" 
-          style={{ width: currentAppStepForNavbar === 'auth' ? 'auto' : '100%', maxWidth: currentAppStepForNavbar === 'auth' ? '450px' : '960px' }} // Max-width réduit pour le form auth
+          style={{ 
+            width: currentAppStepForNavbar === 'auth' ? 'auto' : '100%', 
+            maxWidth: currentAppStepForNavbar === 'auth' ? '450px' : '960px',
+            margin: currentAppStepForNavbar === 'auth' ? '0 auto' : '0 auto' // Assurer le centrage horizontal
+          }}
         > 
           {apiError && <p style={{color: 'orange', textAlign: 'center', marginBottom: '20px'}}>Erreur API: {apiError}</p>}
           {speechError && <p style={{color: 'red', textAlign: 'center', marginBottom: '20px'}}>{speechError}</p>}
@@ -293,7 +298,8 @@ function App() {
           <Routes>
             <Route path="/auth" element={
               <AuthRoute>
-                <section id="auth-display" className="app-section" style={{ boxShadow: 'none', border: `1px solid var(--color-border)` }}>
+                {/* La section app-section aura le même fond que main-content, la bordure la délimitera */}
+                <section id="auth-display" className="app-section" style={{ boxShadow: 'none', backgroundColor: 'var(--color-bg-secondary)' }}>
                   <AuthForm onNavigateToGuest={() => navigate('/')} />
                 </section>
               </AuthRoute>
