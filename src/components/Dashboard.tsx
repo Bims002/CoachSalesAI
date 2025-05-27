@@ -154,18 +154,56 @@ const Dashboard: React.FC = () => {
 
   // --- Fonctions de rendu pour le tableau de bord manager ---
   const renderManagerDashboard = () => {
+    const tổngSimulationsEquipe = teamMembersData.reduce((acc, member) => acc + (member.totalSimulations ?? 0), 0);
+    const membresAvecScoresValides = teamMembersData.filter(member => member.totalSimulations && member.totalSimulations > 0 && member.averageScore !== undefined);
+    const scoreMoyenEquipe = membresAvecScoresValides.length > 0
+      ? membresAvecScoresValides.reduce((acc, member) => acc + (member.averageScore ?? 0), 0) / membresAvecScoresValides.length
+      : 0;
+
+    const cardStyle: React.CSSProperties = {
+      backgroundColor: 'var(--color-bg-secondary)',
+      padding: '20px',
+      borderRadius: '8px',
+      marginBottom: '20px',
+      boxShadow: 'var(--color-shadow) 0px 2px 4px' // Utiliser la variable CSS pour l'ombre
+    };
+    
+    const statItemStyle: React.CSSProperties = {
+      marginBottom: '10px',
+      fontSize: '1.1em'
+    };
+
     return (
       <>
         <h2>Tableau de Bord Manager</h2>
-        {teamMembersData.length === 0 && <p>Aucun membre d'équipe trouvé ou aucune simulation enregistrée pour l'équipe.</p>}
-        {teamMembersData.map(member => (
-          <div key={member.uid} style={{ padding: '15px', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '8px', marginBottom: '15px' }}>
-            <h4>{member.displayName || member.email}</h4>
-            <p>Simulations réalisées : {member.totalSimulations ?? 0}</p>
-            <p>Score moyen : {(member.averageScore ?? 0).toFixed(1)} / 100</p>
-            {/* On pourrait ajouter un mini-graphique ou un lien vers plus de détails ici */}
+
+        <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '30px', flexWrap: 'wrap' }}>
+          <div style={{ textAlign: 'center', ...cardStyle, minWidth: '220px', margin:'10px' }}>
+            <h3 style={{marginTop:0}}>Simulations de l'Équipe</h3>
+            <p style={{ fontSize: '2em', color: 'var(--color-accent)', margin: '0' }}>{tổngSimulationsEquipe}</p>
           </div>
-        ))}
+          <div style={{ textAlign: 'center', ...cardStyle, minWidth: '220px', margin:'10px' }}>
+            <h3 style={{marginTop:0}}>Score Moyen de l'Équipe</h3>
+            <p style={{ fontSize: '2em', color: 'var(--color-accent)', margin: '0' }}>
+              {scoreMoyenEquipe.toFixed(1)} / 100
+            </p>
+          </div>
+        </div>
+
+        <h3>Performance des Commerciaux</h3>
+        {teamMembersData.length === 0 && <p className="placeholder-text" style={{textAlign: 'center'}}>Aucun commercial trouvé pour cette équipe ou aucune donnée de simulation.</p>}
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          {teamMembersData.map(member => (
+            <div key={member.uid} style={cardStyle}>
+              <h4 style={{ marginTop: 0, color: 'var(--color-accent-hover)'}}>{member.displayName || member.email}</h4>
+              <p style={statItemStyle}>Simulations : <strong>{member.totalSimulations ?? 0}</strong></p>
+              <p style={statItemStyle}>Score Moyen : <strong>{(member.averageScore ?? 0).toFixed(1)} / 100</strong></p>
+              {/* TODO: Ajouter un bouton/lien pour voir les détails des simulations du membre */}
+              {/* <button style={{fontSize: '0.9rem', padding: '8px 12px', marginTop: '10px'}}>Voir Détails</button> */}
+            </div>
+          ))}
+        </div>
       </>
     );
   };
