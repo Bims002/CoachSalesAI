@@ -8,11 +8,8 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 
-// AppStep devrait idéalement être importé d'un fichier de types partagé ou de App.tsx
-type AppStep = 'scenarioSelection' | 'contextInput' | 'simulation' | 'results' | 'history' | 'dashboard' | 'auth';
-
 interface AuthFormProps {
-  onNavigateToGuest?: (step: AppStep) => void; // Prop pour la navigation invité
+  onNavigateToGuest?: () => void; // La fonction passée par App.tsx gère la destination
 }
 
 const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
@@ -114,27 +111,41 @@ const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
            />
          </div>
         )}
-        {error && <p style={{ color: '#f44336', marginBottom: '15px', textAlign: 'center' }}>{error}</p>}
-        {message && <p style={{ color: '#4caf50', marginBottom: '15px', textAlign: 'center' }}>{message}</p>}
-        <button type="submit" style={{ width: '100%', marginBottom: '15px' }}>
+        {error && <p style={{ color: '#dc3545', marginBottom: '10px', textAlign: 'center', fontSize: '0.9rem' }}>{error}</p>}
+        {message && <p style={{ color: '#28a745', marginBottom: '10px', textAlign: 'center', fontSize: '0.9rem' }}>{message}</p>}
+        <button type="submit" style={{ width: '100%', marginBottom: '10px', padding: '12px 20px', fontSize: '1rem' }}>
           {isLogin ? 'Se connecter' : 'S\'inscrire'}
         </button>
       </form>
-      <button onClick={handleGoogleSignIn} style={{ width: '100%', backgroundColor: '#4285F4', marginBottom: '15px' }}>
+      <button onClick={handleGoogleSignIn} style={{ width: '100%', backgroundColor: '#4285F4', color: 'white', marginBottom: '10px', padding: '12px 20px', fontSize: '1rem' }}>
         Continuer avec Google
       </button>
-      <button onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(null); }} style={{ width: '100%', backgroundColor: 'transparent', color: 'var(--color-accent)', border: '1px solid var(--color-accent)', marginBottom: '15px' }}>
+      <button 
+        onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(null); }} 
+        style={{ 
+          width: '100%', 
+          backgroundColor: 'transparent', 
+          color: 'var(--color-accent)', 
+          border: `1px solid var(--color-accent)`, 
+          marginBottom: '10px', 
+          padding: '12px 20px', 
+          fontSize: '1rem' 
+        }}
+      >
         {isLogin ? 'Pas encore de compte ? S\'inscrire' : 'Déjà un compte ? Se connecter'}
       </button>
       
       {onNavigateToGuest && (
         <button 
-          onClick={() => onNavigateToGuest('scenarioSelection')} 
+          onClick={onNavigateToGuest} // Appel direct de la fonction fournie par App.tsx
           style={{ 
             width: '100%', 
-            backgroundColor: 'var(--color-text-secondary)', 
-            color: 'var(--color-bg)', 
-            marginTop: '10px' 
+            backgroundColor: 'transparent', 
+            color: 'var(--color-text-secondary)', 
+            border: `1px solid var(--color-text-secondary)`,
+            marginTop: '10px', // Garder un peu d'espace en haut
+            padding: '12px 20px',
+            fontSize: '1rem'
           }}
         >
           Continuer en tant qu'invité
