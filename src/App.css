@@ -1,19 +1,19 @@
-/* Thème clair amélioré pour CoachSales AI */
+/* Thème sombre original (style GitHub) avec ajustement pour fond des sections */
 
 :root {
-  --color-bg: #ffffff; /* Fond principal blanc */
-  --color-bg-secondary: #f8f9fa; /* Gris très doux, plus clair */
-  --color-text-primary: #212529; /* Noir standard Bootstrap, bon contraste */
-  --color-text-secondary: #6c757d; /* Gris standard Bootstrap pour texte secondaire */
-  --color-accent: #007bff; /* Bleu Bootstrap (peut être ajusté si besoin) */
-  --color-accent-hover: #0056b3; /* Bleu plus foncé pour survol */
-  --color-border: #dee2e6; /* Gris clair standard Bootstrap pour bordures */
-  --color-shadow: rgba(0, 0, 0, 0.075); /* Ombre encore plus subtile */
+  --color-bg: #0d1117; /* Fond principal (très sombre) */
+  --color-bg-secondary: #161b22; /* Fond secondaire (un peu moins sombre) - Utilisé pour les cartes/sections */
+  --color-text-primary: #c9d1d9; /* Texte clair principal */
+  --color-text-secondary: #8b949e; /* Texte clair secondaire */
+  --color-accent: #58a6ff; /* Bleu GitHub */
+  --color-accent-hover: #1f6feb; /* Bleu GitHub survol */
+  --color-border: #30363d; /* Bordure sombre */
+  --color-shadow: rgba(0, 0, 0, 0.5); /* Ombre plus prononcée */
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 body {
-  background-color: var(--color-bg);
+  background-color: var(--color-bg); /* Fond général très sombre */
   color: var(--color-text-primary);
   font-family: var(--font-family);
   margin: 0;
@@ -25,31 +25,31 @@ body {
 /* Nouvelle structure pour layout avec sidebar */
 .app-layout {
   display: flex;
-  min-height: 100vh; /* Assurer que le layout prend toute la hauteur */
+  min-height: 100vh; 
 }
 
 .sidebar {
-  width: 260px; /* Largeur de la sidebar */
-  background-color: var(--color-bg-secondary); /* Fond légèrement différent pour la sidebar */
+  width: 260px; 
+  background-color: var(--color-bg-secondary); 
   padding: 20px;
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  position: fixed; /* Sidebar fixe */
+  position: fixed; 
   left: 0;
   top: 0;
   bottom: 0;
   z-index: 1000; 
-  transition: width 0.3s ease; /* Pour une future sidebar escamotable */
+  transition: width 0.3s ease; 
 }
 
 .main-content {
   flex-grow: 1;
-  padding: 20px; /* Réduire un peu le padding général */
+  padding: 20px; 
   margin-left: 260px; 
-  background-color: var(--color-bg); 
+  background-color: var(--color-bg); /* Fond principal de la zone de contenu (très sombre) */
   overflow-y: auto; 
-  transition: margin-left 0.3s ease; /* Pour une future sidebar escamotable */
+  transition: margin-left 0.3s ease; 
 }
 
 .app-container { 
@@ -57,9 +57,8 @@ body {
   margin: 0 auto; 
 }
 
-/* Styles pour la navbar mobile et le menu hamburger */
 .mobile-navbar {
-  display: none; /* Cachée par défaut, affichée par media query */
+  display: none; 
   justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
@@ -70,31 +69,29 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1001; /* Au-dessus de la sidebar si elle devenait escamotable */
+  z-index: 1001; 
 }
 
 .hamburger-button {
-  font-size: 1.8rem; /* Taille de l'icône hamburger */
+  font-size: 1.8rem; 
   background: none;
   border: none;
   color: var(--color-text-primary);
   cursor: pointer;
   padding: 0.25rem 0.5rem; 
   line-height: 1;
-  /* Retirer le style de bouton global pour ce bouton spécifique */
   box-shadow: none;
-  font-weight: normal; /* Le bold global n'est pas nécessaire ici */
+  font-weight: normal; 
 }
 .hamburger-button:hover {
-  background-color: transparent; /* Pas de changement de fond au survol */
+  background-color: transparent; 
   box-shadow: none;
 }
 
-
 .mobile-menu-dropdown {
-  display: none; /* Caché par défaut */
+  display: none; 
   position: fixed;
-  top: 57px; /* Juste en dessous de la mobile-navbar (hauteur approx) */
+  top: 57px; 
   left: 0;
   right: 0;
   background-color: var(--color-bg-secondary);
@@ -103,25 +100,11 @@ body {
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
-
-header { /* Ce header n'est plus utilisé */
-  /* display: none; */ /* On peut le cacher complètement */
-  color: var(--color-text-primary);
-  padding: 24px;
-  text-align: center;
-  margin-bottom: 40px;
-  border-radius: 12px 12px 0 0;
-  font-weight: 700;
-  font-size: 2.5rem;
-  letter-spacing: 1.5px;
-  border: 1px solid var(--color-border);
-}
-
 .app-section {
   margin-bottom: 40px;
   padding: 30px;
   border-radius: 12px;
-  background-color: var(--color-bg);
+  background-color: var(--color-bg-secondary); /* Les sections/cartes utilisent le fond secondaire */
   border: 1px solid var(--color-border);
   box-shadow: 0 4px 16px var(--color-shadow);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
@@ -137,7 +120,7 @@ header { /* Ce header n'est plus utilisé */
   margin-bottom: 24px;
   color: var(--color-accent);
   font-size: 2rem;
-  border-bottom: 2px solid #30363d;
+  border-bottom: 2px solid var(--color-border); /* Bordure plus visible sur fond sombre */
   padding-bottom: 12px;
   font-weight: 700;
 }
@@ -160,7 +143,7 @@ header { /* Ce header n'est plus utilisé */
 
 button {
   background-color: var(--color-accent);
-  color: white;
+  color: var(--color-bg); /* Texte sombre sur bouton clair (si accent est clair) ou blanc */
   border: none;
   padding: 16px 28px;
   font-size: 1.2rem;
@@ -170,21 +153,27 @@ button {
   transition: background-color 0.3s ease, box-shadow 0.3s ease;
   box-shadow: 0 4px 12px var(--color-shadow);
 }
+/* Ajustement pour thème sombre: texte des boutons principaux en blanc */
+button { 
+  color: white; /* Assurer que le texte du bouton principal est blanc sur fond accentué */
+}
+
 
 button:hover {
   background-color: var(--color-accent-hover);
-  box-shadow: 0 6px 20px rgba(31, 111, 235, 0.6);
+  box-shadow: 0 6px 20px rgba(31, 111, 235, 0.6); /* Ombre GitHub pour le survol */
 }
 
 button:disabled {
-  background-color: #444c56;
+  background-color: #21262d; /* Fond plus sombre pour désactivé */
+  color: var(--color-text-secondary); /* Texte grisé */
   cursor: not-allowed;
   opacity: 0.7;
   box-shadow: none;
 }
 
 button:disabled:hover {
-  background-color: #444c56;
+  background-color: #21262d;
   box-shadow: none;
 }
 
@@ -194,7 +183,7 @@ ul {
 }
 
 .app-section ul li {
-  background-color: var(--color-bg-secondary);
+  background-color: #21262d; /* Fond sombre pour les items de liste */
   padding: 14px 20px;
   margin-bottom: 12px;
   border-radius: 10px;
@@ -206,14 +195,14 @@ ul {
 }
 
 .app-section ul li:hover {
-  background-color: var(--color-border); /* Un gris un peu plus foncé que bg-secondary */
+  background-color: var(--color-border); /* Un peu plus clair au survol */
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
 
 .app-section ul li.selected {
   background-color: var(--color-accent);
-  color: white; /* Le blanc sur bleu vif est ok */
+  color: white; 
   border-color: var(--color-accent-hover);
   font-weight: 700;
 }
@@ -221,25 +210,24 @@ ul {
 .selected-scenario-description {
   margin-top: 20px;
   padding: 16px;
-  background-color: var(--color-bg-secondary); /* Utiliser une variable pour fond clair */
-  border-left: 4px solid var(--color-accent); /* Bordure d'accentuation plus fine */
-  color: var(--color-text-primary); /* Texte principal */
-  font-weight: normal; /* Pas besoin de gras ici, le placeholder-text gère l'italique */
-  font-size: 1rem; /* Taille standard */
+  background-color: #21262d; /* Fond sombre pour la description */
+  border-left: 4px solid var(--color-accent); 
+  color: var(--color-text-primary); 
+  font-weight: normal; 
+  font-size: 1rem; 
   border-radius: 6px;
 }
-.selected-scenario-description h4 { /* Style pour le titre dans la description */
+.selected-scenario-description h4 { 
   margin-top: 0;
   margin-bottom: 8px;
-  color: var(--color-text-primary); /* Texte plus foncé pour le titre */
+  color: var(--color-text-primary); 
   font-size: 1.1rem;
-  font-weight: 600; /* Semi-gras */
+  font-weight: 600; 
 }
-.selected-scenario-description p.placeholder-text { /* Style pour le texte de description */
- color: var(--color-text-secondary); /* Texte secondaire pour la description */
- font-style: normal; /* Pas besoin d'italique si c'est le texte principal de la description */
+.selected-scenario-description p.placeholder-text { 
+ color: var(--color-text-secondary); 
+ font-style: normal; 
 }
-
 
 .placeholder-text {
   color: var(--color-text-secondary);
@@ -253,7 +241,7 @@ ul {
   padding: 16px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  background-color: var(--color-bg-secondary);
+  background-color: var(--color-bg); /* Fond très sombre pour la liste des messages */
   font-size: 1.1rem;
   font-weight: 500;
 }
@@ -281,17 +269,17 @@ ul {
 }
 
 .message.ai {
-  background-color: var(--color-bg-secondary); /* Fond clair pour les messages IA */
-  color: var(--color-text-primary); /* Texte foncé pour les messages IA */
-  border: 1px solid var(--color-border); /* Légère bordure */
+  background-color: #21262d; /* Fond sombre pour les messages IA */
+  color: var(--color-text-primary); /* Texte clair pour les messages IA */
+  border: 1px solid var(--color-border); 
   margin-right: auto;
   text-align: left;
-  box-shadow: 0 4px 12px rgba(33, 38, 45, 0.4);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); /* Ombre adaptée au thème sombre */
 }
 
 .message.interim {
   background-color: transparent;
-  color: #43a047;
+  color: #6fcf97; /* Vert clair pour le texte intérimaire sur fond sombre */
   font-style: italic;
   text-align: right;
   padding-right: 0;
@@ -315,7 +303,6 @@ ul {
   background-color: var(--color-accent-hover);
 }
 
-/* Styles pour le bouton microphone dans SimulationControls */
 .mic-button {
   background-color: var(--color-accent);
   transition: background-color 0.3s ease, transform 0.2s ease;
@@ -327,42 +314,31 @@ ul {
 }
 
 .mic-button.listening {
-  background-color: #dc3545; /* Rouge quand écoute */
+  background-color: #e5534b; /* Rouge GitHub pour écoute */
 }
 .mic-button.listening:hover:not(:disabled) {
-  background-color: #c82333; /* Rouge plus foncé au survol */
+  background-color: #c93c37; 
 }
 
-/* Animation pour l'icône du microphone (utilisée dans App.tsx et potentiellement dans SimulationControls) */
-.mic-icon-listening { /* Cette classe peut être appliquée à un span contenant l'icône */
+.mic-icon-listening { 
   animation: pulse 1.5s infinite ease-in-out;
-  display: inline-block; /* Nécessaire pour que transform:scale fonctionne bien */
+  display: inline-block; 
 }
 
 @keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.7;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-/* Style pour l'indicateur de chargement de l'IA */
 .loader-ia {
-  border: 4px solid var(--color-bg-secondary); /* Gris clair pour le fond du loader */
-  border-top: 4px solid var(--color-accent); /* Bleu pour la partie animée */
+  border: 4px solid var(--color-border); 
+  border-top: 4px solid var(--color-accent); 
   border-radius: 50%;
   width: 30px;
   height: 30px;
   animation: spin 1s linear infinite;
-  margin: 10px auto; /* Centrer le loader */
+  margin: 10px auto; 
 }
 
 @keyframes spin {
@@ -370,134 +346,53 @@ ul {
   100% { transform: rotate(360deg); }
 }
 
-
 @media (max-width: 768px) {
-  .sidebar {
-    display: none; /* Cacher la sidebar sur mobile */
-  }
-  .main-content {
-    margin-left: 0; /* Le contenu principal prend toute la largeur */
-    padding: 15px; /* Ajuster le padding pour mobile */
-    padding-top: 70px; /* Laisser de la place pour la mobile-navbar fixe */
-  }
-  .app-container {
-    margin: 0;
-    padding: 0;
-  }
-  .mobile-navbar {
-    display: flex; /* Afficher la navbar mobile */
-  }
-  .mobile-menu-dropdown {
-    display: block; /* S'affiche si isMobileMenuOpen est true (géré par JS) */
-  }
-
-  /* Ajustements généraux pour mobile */
-  .app-section h2 {
-    font-size: 1.6rem;
-  }
-  .app-section h3 {
-    font-size: 1.3rem;
-  }
-  button { /* Les boutons dans les sections prendront 100% de largeur */
-    /* width: 100%; */ 
-    /* padding: 14px 0; */ 
-    font-size: 1.1rem; 
-  }
-  .mobile-menu-dropdown button, .sidebar button {
-      width: 100% !important; /* Forcer la largeur pour les liens du menu */
-  }
-   .hamburger-button { /* S'assurer que le hamburger ne prend pas 100% */
-    width: auto !important; 
-    padding: 0.25rem 0.5rem !important;
-  }
-
-  .messages-list {
-    max-height: 280px; 
-  }
-
-  .simulation-panels-container {
-    flex-direction: column;
-  }
-  .simulation-panel {
-    width: 100%;
-    margin-bottom: 20px;
-  }
+  .sidebar { display: none; }
+  .main-content { margin-left: 0; padding: 15px; padding-top: 70px; }
+  .app-container { margin: 0; padding: 0; }
+  .mobile-navbar { display: flex; }
+  .mobile-menu-dropdown { display: block; }
+  .app-section h2 { font-size: 1.6rem; }
+  .app-section h3 { font-size: 1.3rem; }
+  button { font-size: 1.1rem; }
+  .mobile-menu-dropdown button, .sidebar button { width: 100% !important; }
+  .hamburger-button { width: auto !important; padding: 0.25rem 0.5rem !important; }
+  .messages-list { max-height: 280px; }
+  .simulation-panels-container { flex-direction: column; }
+  .simulation-panel { width: 100%; margin-bottom: 20px; }
 }
 
-/* Styles pour la nouvelle interface de simulation */
-.simulation-interface {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.simulation-panels-container {
-  display: flex;
-  justify-content: space-around;
-  width: 100%;
-  margin-bottom: 20px;
-}
-
+.simulation-interface { display: flex; flex-direction: column; align-items: center; }
+.simulation-panels-container { display: flex; justify-content: space-around; width: 100%; margin-bottom: 20px; }
 .simulation-panel {
   background-color: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
-  width: 45%; /* Chaque panneau prend un peu moins de la moitié */
-  min-height: 250px; /* Hauteur minimale pour le contenu */
+  width: 45%; 
+  min-height: 250px; 
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2); /* Ombre un peu plus visible pour les panneaux */
 }
-
 .simulation-panel img.avatar {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-bottom: 15px;
-  border: 3px solid var(--color-accent);
+  width: 100px; height: 100px; border-radius: 50%;
+  object-fit: cover; margin-bottom: 15px; border: 3px solid var(--color-accent);
 }
-
-.simulation-panel h4 { /* Nom du personnage (IA ou Vous) */
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 1.3rem;
-  color: var(--color-text-primary);
-}
-
+.simulation-panel h4 { margin-top: 0; margin-bottom: 10px; font-size: 1.3rem; color: var(--color-text-primary); }
 .simulation-panel .last-message {
-  font-size: 1rem;
-  color: var(--color-text-secondary);
-  min-height: 60px; /* Espace pour 2-3 lignes de texte */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 10px;
-  font-style: italic;
+  font-size: 1rem; color: var(--color-text-secondary); min-height: 60px; 
+  display: flex; align-items: center; justify-content: center; padding: 0 10px; font-style: italic;
 }
-
-.simulation-timer {
-  font-size: 1.5rem;
-  color: var(--color-accent);
-  margin: 20px 0;
-  font-weight: bold;
-}
-
-/* Ajustements pour les contrôles de simulation dans ce nouveau layout */
+.simulation-timer { font-size: 1.5rem; color: var(--color-accent); margin: 20px 0; font-weight: bold; }
 #simulation-controls.app-section {
-  background-color: transparent; /* Pas de fond de carte pour les contrôles globaux */
-  border: none;
-  box-shadow: none;
-  padding: 0; /* Pas de padding supplémentaire */
-  margin-top: 10px; /* Espace au-dessus des boutons */
+  background-color: transparent; border: none; box-shadow: none; padding: 0; margin-top: 10px;
 }
 
-/* Amélioration de la visibilité des placeholders */
 input::placeholder,
 textarea::placeholder {
-  color: #6c757d; /* Utilise --color-text-secondary qui a été ajusté */
-  opacity: 0.8; /* Légère transparence pour distinguer du texte saisi */
+  color: var(--color-text-secondary); 
+  opacity: 0.7; /* Un peu plus transparent pour le thème sombre */
 }
