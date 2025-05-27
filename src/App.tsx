@@ -155,7 +155,7 @@ function App() {
     setIsAiSpeaking(true);
     const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
     audio.play().catch(e => {
-      console.error("Erreur audio.play():", e); // S'assurer que 'e' est utilisé
+      console.error("Erreur audio.play():", e); 
       setIsAiSpeaking(false);
       if (location.pathname.startsWith('/simulation') && !isAiResponding && !isAnalyzing) startListening();
     });
@@ -163,7 +163,7 @@ function App() {
       setIsAiSpeaking(false);
       if (location.pathname.startsWith('/simulation') && !isAiResponding && !isAnalyzing) startListening();
     };
-    audio.onerror = (e) => { // S'assurer que 'e' est utilisé ici aussi
+    audio.onerror = (e) => { 
       console.error("Erreur de l'élément Audio:", e);
       setIsAiSpeaking(false);
       if (location.pathname.startsWith('/simulation') && !isAiResponding && !isAnalyzing) startListening();
@@ -263,13 +263,9 @@ function App() {
 
   useEffect(() => {
     if (currentUser && location.pathname === '/auth') navigate('/');
-    // La logique de redirection pour les non-connectés est commentée pour permettre l'accès invité
-    // else if (!currentUser && !['/auth', '/', '/context', '/simulation', '/results'].includes(location.pathname) && !location.pathname.startsWith('/scenario/')) {
-    //   navigate('/auth');
-    // }
   }, [currentUser, location.pathname, navigate]);
 
-  const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => children; // Accès invité permis partout pour l'instant
+  const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => children; 
   const AuthRoute: React.FC<ProtectedRouteProps> = ({ children }) => currentUser ? <Navigate to="/" replace /> : children;
 
   return (
@@ -281,23 +277,40 @@ function App() {
         style={{ 
           marginLeft: currentAppStepForNavbar !== 'auth' ? '260px' : '0',
           display: currentAppStepForNavbar === 'auth' ? 'flex' : 'block',
-          alignItems: currentAppStepForNavbar === 'auth' ? 'center' : 'flex-start',
+          alignItems: currentAppStepForNavbar === 'auth' ? 'center' : 'flex-start', // Changé pour aligner en haut
           justifyContent: currentAppStepForNavbar === 'auth' ? 'center' : 'flex-start',
-          paddingTop: currentAppStepForNavbar === 'auth' ? '0' : '20px', // Pas de padding top pour la page auth si centrée
-          minHeight: currentAppStepForNavbar === 'auth' ? 'calc(100vh - 40px)' : 'auto' // Ajuster pour padding de main-content
+          paddingTop: currentAppStepForNavbar === 'auth' ? '5vh' : '20px', // Un peu de padding en haut pour la page auth
+          minHeight: currentAppStepForNavbar === 'auth' ? 'calc(100vh - 5vh - 20px)' : 'auto' // Ajuster minHeight
         }}
       >
         <div 
           className="app-container" 
-          style={{ width: currentAppStepForNavbar === 'auth' ? 'auto' : '100%', maxWidth: currentAppStepForNavbar === 'auth' ? '500px' : '960px' }} // Max-width pour le form auth
+          style={{ width: currentAppStepForNavbar === 'auth' ? 'auto' : '100%', maxWidth: currentAppStepForNavbar === 'auth' ? '450px' : '960px' }} // Max-width réduit pour le form auth
         > 
           {apiError && <p style={{color: 'orange', textAlign: 'center', marginBottom: '20px'}}>Erreur API: {apiError}</p>}
           {speechError && <p style={{color: 'red', textAlign: 'center', marginBottom: '20px'}}>{speechError}</p>}
           
           <Routes>
-            <Route path="/auth" element={<AuthRoute><AuthForm onNavigateToGuest={() => navigate('/')} /></AuthRoute>} />
-            <Route path="/" element={ <ScenarioSelection scenarios={scenarios} selectedScenario={selectedScenario} onSelectScenario={handleSelectScenario} /> } />
-            <Route path="/context" element={ selectedScenario ? <ContextInput onSubmitContext={handleSubmitContext} selectedScenarioTitle={selectedScenario.title} /> : <Navigate to="/" replace /> } />
+            <Route path="/auth" element={
+              <AuthRoute>
+                <section id="auth-display" className="app-section" style={{ boxShadow: 'none', border: `1px solid var(--color-border)` }}>
+                  <AuthForm onNavigateToGuest={() => navigate('/')} />
+                </section>
+              </AuthRoute>
+            } />
+            <Route path="/" element={ 
+              <section id="scenario-selection-wrapper" className="app-section">
+                <h2>Choisir un Scénario</h2>
+                <ScenarioSelection scenarios={scenarios} selectedScenario={selectedScenario} onSelectScenario={handleSelectScenario} />
+              </section>
+            } />
+            <Route path="/context" element={ 
+              selectedScenario ? 
+              <section id="context-input-wrapper" className="app-section">
+                <ContextInput onSubmitContext={handleSubmitContext} selectedScenarioTitle={selectedScenario.title} /> 
+              </section>
+              : <Navigate to="/" replace /> 
+            } />
             <Route path="/simulation" element={
               (selectedScenario && userContext) ? (
                 <div className="simulation-interface app-section"> 
