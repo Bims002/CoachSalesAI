@@ -1,14 +1,14 @@
-/* Thème clair pour CoachSales AI */
+/* Thème clair amélioré pour CoachSales AI */
 
 :root {
   --color-bg: #ffffff; /* Fond principal blanc */
-  --color-bg-secondary: #f0f2f5; /* Gris très clair pour fonds secondaires (cartes, sidebar) */
-  --color-text-primary: #1c1e21; /* Noir doux/gris foncé pour texte principal */
-  --color-text-secondary: #606770; /* Gris moyen pour texte secondaire */
-  --color-accent: #007bff; /* Bleu vif pour accentuation */
+  --color-bg-secondary: #f8f9fa; /* Gris très doux, plus clair */
+  --color-text-primary: #212529; /* Noir standard Bootstrap, bon contraste */
+  --color-text-secondary: #6c757d; /* Gris standard Bootstrap pour texte secondaire */
+  --color-accent: #007bff; /* Bleu Bootstrap (peut être ajusté si besoin) */
   --color-accent-hover: #0056b3; /* Bleu plus foncé pour survol */
-  --color-border: #ced4da; /* Gris clair pour bordures */
-  --color-shadow: rgba(0, 0, 0, 0.1); /* Ombre portée légère */
+  --color-border: #dee2e6; /* Gris clair standard Bootstrap pour bordures */
+  --color-shadow: rgba(0, 0, 0, 0.075); /* Ombre encore plus subtile */
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
@@ -479,4 +479,11 @@ ul {
   box-shadow: none;
   padding: 0; /* Pas de padding supplémentaire */
   margin-top: 10px; /* Espace au-dessus des boutons */
+}
+
+/* Amélioration de la visibilité des placeholders */
+input::placeholder,
+textarea::placeholder {
+  color: #6c757d; /* Utilise --color-text-secondary qui a été ajusté */
+  opacity: 0.8; /* Légère transparence pour distinguer du texte saisi */
 }
