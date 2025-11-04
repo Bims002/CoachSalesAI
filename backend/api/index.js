@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { TextToSpeechClient } = require('@google-cloud/text-to-speech'); 
@@ -63,7 +64,7 @@ app.post('/api/chat', async (req, res) => {
     Ne révèle jamais que tu es une IA ou un simulateur. Joue ton rôle de client de manière crédible.`;
 
     const currentGeminiModel = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-pro-preview-05-06",
+      model: "gemini-2.5-flash",
       systemInstruction: {
         role: "system",
         parts: [{ text: systemPromptText }],
@@ -164,7 +165,7 @@ app.post('/api/analyze', async (req, res) => {
     }
     Assure-toi que la réponse est un JSON valide et ne contient rien d'autre.`;
 
-    const geminiAnalysisModel = genAI.getGenerativeModel({ model: "gemini-2.5-pro-preview-05-06" }); 
+    const geminiAnalysisModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); 
 
     const result = await geminiAnalysisModel.generateContent(analysisPrompt);
     const analysisText = result.response.text();
@@ -212,3 +213,8 @@ app.post('/api/analyze', async (req, res) => {
 });
 
 module.exports = app;
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Serveur backend démarré sur http://localhost:${PORT}`);
+});

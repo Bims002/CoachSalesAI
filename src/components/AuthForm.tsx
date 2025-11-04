@@ -5,11 +5,12 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  updateProfile // Importer updateProfile
 } from 'firebase/auth';
-import type { UserCredential } from 'firebase/auth'; // Importer UserCredential en tant que type
-import { doc, setDoc } from 'firebase/firestore'; // Importer pour Firestore
-import { db } from '../firebase-config'; // Importer db
+import type { UserCredential } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase-config';
 import type { UserProfile } from '../contexts/AuthContext'; // Importer UserProfile
 
 interface AuthFormProps {
@@ -21,8 +22,9 @@ type UserRole = 'commercial' | 'manager'; // Simplifié pour l'inscription, 'adm
 const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState(''); // Nouvel état pour le nom d'affichage
   const [isLogin, setIsLogin] = useState(true);
-  const [selectedRole, setSelectedRole] = useState<UserRole>('commercial'); // Nouvel état pour le rôle
+  const [selectedRole, setSelectedRole] = useState<UserRole>('commercial');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -34,18 +36,27 @@ const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
+        if (!displayName.trim()) {
+          setError("Veuillez entrer un nom complet.");
+          return;
+        }
         const userCredential: UserCredential = await createUserWithEmailAndPassword(auth, email, password);
-        // Après la création de l'utilisateur Firebase Auth, créer le profil Firestore
-        if (userCredential.user) {
-          const userRef = doc(db, 'users', userCredential.user.uid);
-          const newUserProfile: Omit<UserProfile, 'uid'> & { uid?: string } = { // uid est dans userCredential.user.uid
-            email: userCredential.user.email,
-            displayName: userCredential.user.displayName, // Peut être null, ou demander un nom d'utilisateur
+        const user = userCredential.user;
+        if (user) {
+          // Mettre à jour le profil Firebase Auth avec le displayName
+          await updateProfile(user, { displayName: displayName.trim() });
+          
+          // Créer le profil Firestore
+          const userRef = doc(db, 'users', user.uid);
+          const newUserProfile: UserProfile = {
+            uid: user.uid,
+            email: user.email,
+            displayName: displayName.trim(),
             role: selectedRole,
-            // teamId et managerId peuvent être définis plus tard par un admin/manager
+            // teamId et managerId seront définis plus tard
           };
-          await setDoc(userRef, { uid: userCredential.user.uid, ...newUserProfile });
-          console.log("Profil Firestore créé depuis AuthForm avec rôle:", selectedRole);
+          await setDoc(userRef, newUserProfile);
+          console.log("Profil Firestore créé avec rôle:", selectedRole, "et displayName:", displayName.trim());
         }
       }
     } catch (err: any) {
@@ -101,21 +112,34 @@ const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
             style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)' }}
           />
         </div>
-        {isLogin && (
+        {!isLogin && ( // Champ Nom complet uniquement pour l'inscription
           <div>
-           <label htmlFor="password">Mot de passe:</label>
-           <input
-             type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+            <label htmlFor="displayName">Nom complet:</label>
+            <input
+              type="text"
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               required
-              style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)' }}
+              style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)' }}
             />
-            <button type="button" onClick={handlePasswordReset} style={{ fontSize: '0.9rem', padding: '6px 10px', backgroundColor: 'transparent', color: 'var(--color-accent)', border: 'none', textDecoration: 'underline', cursor: 'pointer', display: 'block', textAlign: 'right', marginBottom: '15px' }}>
-              Mot de passe oublié ?
-            </button>
           </div>
+        )}
+        {isLogin && (
+          <div> 
+            <label htmlFor="password">Mot de passe:</label>
+            <input
+              type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)' }}
+              />
+              <button type="button" onClick={handlePasswordReset} style={{ fontSize: '0.9rem', padding: '6px 10px', backgroundColor: 'transparent', color: 'var(--color-accent)', border: 'none', textDecoration: 'underline', cursor: 'pointer', display: 'block', textAlign: 'right', marginBottom: '15px' }}>
+                Mot de passe oublié ?
+              </button>
+            </div>
         )}
         {!isLogin && (
            <div>
@@ -156,8 +180,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ onNavigateToGuest }) => {
                 </label>
               </div>
             </div>
-         </div>
-        )}
+         </div> 
+        )} 
+        {/* Le !isLogin englobe le champ mot de passe ET le sélecteur de rôle.
+            La div fermante ci-dessus est correcte pour le bloc !isLogin.
+            Le champ mot de passe pour le LOGIN est dans un autre bloc conditionnel {isLogin && (...)}
+        */}
         {error && <p style={{ color: '#dc3545', marginBottom: '10px', textAlign: 'center', fontSize: '0.9rem' }}>{error}</p>}
         {message && <p style={{ color: '#28a745', marginBottom: '10px', textAlign: 'center', fontSize: '0.9rem' }}>{message}</p>}
         <button type="submit" style={{ width: '100%', marginBottom: '10px', padding: '12px 20px', fontSize: '1rem' }}>
