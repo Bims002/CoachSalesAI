@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "firebase": "^10.12.2",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-router-dom": "^7.6.1",
     "recharts": "^2.12.7"
   },
